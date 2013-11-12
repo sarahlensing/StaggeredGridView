@@ -3,5 +3,7 @@
     <declare-styleable name="StaggeredGridView">
         <attr name="drawSelectorOnTop" format="boolean" />
         <attr name="numColumns" format="integer" />
+        <attr name="numRows" format="integer" />
+        <attr name="gridOrientation" format="string" />
     </declare-styleable>
 </resources>
