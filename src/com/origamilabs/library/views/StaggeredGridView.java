@@ -2945,8 +2945,15 @@ public class StaggeredGridView extends ViewGroup {
             // reset list if position does not exist or id for position has changed
             if(mFirstPosition > mItemCount-1 || mAdapter.getItemId(mFirstPosition) != mFirstAdapterId){
             	mFirstPosition = 0;
-            	Arrays.fill(mItemTops, 0);
-            	Arrays.fill(mItemBottoms, 0);
+                if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
+                    Arrays.fill(mItemTops, 0);
+                    Arrays.fill(mItemBottoms, 0);
+                }
+                else {
+                    Arrays.fill(mItemLefts, 0);
+                    Arrays.fill(mItemRights, 0);
+                }
+
             	
             	if(mRestoreOffsets!=null)
             	Arrays.fill(mRestoreOffsets, 0);
