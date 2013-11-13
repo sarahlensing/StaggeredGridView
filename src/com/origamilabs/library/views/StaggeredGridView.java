@@ -949,78 +949,78 @@ public class StaggeredGridView extends ViewGroup {
         }
         else {
             //TODO uncomment
-//            final int height = getHeight();
-//            final int clearAbove = -mItemMargin;
-//            final int clearBelow = height + mItemMargin;
-//            for (int i = getChildCount() - 1; i >= 0; i--) {
-//                final View child = getChildAt(i);
-//                if (child.getTop() <= clearBelow)  {
-//                    // There may be other offscreen views, but we need to maintain
-//                    // the invariant documented above.
-//                    break;
-//                }
-//
-//                if (mInLayout) {
-//                    removeViewsInLayout(i, 1);
-//                } else {
-//                    removeViewAt(i);
-//                }
-//
-//                mRecycler.addScrap(child);
-//            }
-//
-//            while (getChildCount() > 0) {
-//                final View child = getChildAt(0);
-//                if (child.getBottom() >= clearAbove) {
-//                    // There may be other offscreen views, but we need to maintain
-//                    // the invariant documented above.
-//                    break;
-//                }
-//
-//                if (mInLayout) {
-//                    removeViewsInLayout(0, 1);
-//                } else {
-//                    removeViewAt(0);
-//                }
-//
-//                mRecycler.addScrap(child);
-//                mFirstPosition++;
-//            }
-//
-//            final int childCount = getChildCount();
-//            if (childCount > 0) {
-//                // Repair the top and bottom column boundaries from the views we still have
-//                Arrays.fill(mItemTops, Integer.MAX_VALUE);
-//                Arrays.fill(mItemBottoms, Integer.MIN_VALUE);
-//
-//                for (int i = 0; i < childCount; i++){
-//                    final View child = getChildAt(i);
-//                    final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-//                    final int top = child.getTop() - mItemMargin;
-//                    final int bottom = child.getBottom();
-//                    final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
-//
-//                    final int colEnd = lp.column + Math.min(mColCount, lp.span);
-//                    for (int col = lp.column; col < colEnd; col++) {
-//                        final int colTop = top - rec.getMarginAbove(col - lp.column);
-//                        final int colBottom = bottom + rec.getMarginBelow(col - lp.column);
-//                        if (colTop < mItemTops[col]) {
-//                            mItemTops[col] = colTop;
-//                        }
-//                        if (colBottom > mItemBottoms[col]) {
-//                            mItemBottoms[col] = colBottom;
-//                        }
-//                    }
-//                }
-//
-//                for (int col = 0; col < mColCount; col++) {
-//                    if (mItemTops[col] == Integer.MAX_VALUE) {
-//                        // If one was untouched, both were.
-//                        mItemTops[col] = 0;
-//                        mItemBottoms[col] = 0;
-//                    }
-//                }
-//            }
+            final int width = getWidth();
+            final int clearLeft = -mItemMargin;
+            final int clearRight = width + mItemMargin;
+            for (int i = getChildCount() - 1; i >= 0; i--) {
+                final View child = getChildAt(i);
+                if (child.getTop() <= clearRight)  {
+                    // There may be other offscreen views, but we need to maintain
+                    // the invariant documented above.
+                    break;
+                }
+
+                if (mInLayout) {
+                    removeViewsInLayout(i, 1);
+                } else {
+                    removeViewAt(i);
+                }
+
+                mRecycler.addScrap(child);
+            }
+
+            while (getChildCount() > 0) {
+                final View child = getChildAt(0);
+                if (child.getBottom() >= clearLeft) {
+                    // There may be other offscreen views, but we need to maintain
+                    // the invariant documented above.
+                    break;
+                }
+
+                if (mInLayout) {
+                    removeViewsInLayout(0, 1);
+                } else {
+                    removeViewAt(0);
+                }
+
+                mRecycler.addScrap(child);
+                mFirstPosition++;
+            }
+
+            final int childCount = getChildCount();
+            if (childCount > 0) {
+                // Repair the top and bottom column boundaries from the views we still have
+                Arrays.fill(mItemLefts, Integer.MAX_VALUE);
+                Arrays.fill(mItemRights, Integer.MIN_VALUE);
+
+                for (int i = 0; i < childCount; i++){
+                    final View child = getChildAt(i);
+                    final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+                    final int left = child.getLeft() - mItemMargin;
+                    final int right = child.getRight();
+                    final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
+
+                    final int rowEnd = lp.row + Math.min(mRowCount, lp.span);
+                    for (int row = lp.row; row < rowEnd; row++) {
+                        final int rowLeft = left - rec.getMarginToLeft(row - lp.row);
+                        final int rowRight = right + rec.getMarginToRight(row - lp.row);
+                        if (rowLeft < mItemLefts[row]) {
+                            mItemLefts[row] = rowLeft;
+                        }
+                        if (rowRight > mItemRights[row]) {
+                            mItemRights[row] = rowRight;
+                        }
+                    }
+                }
+
+                for (int row = 0; row < mRowCount; row++) {
+                    if (mItemLefts[row] == Integer.MAX_VALUE) {
+                        // If one was untouched, both were.
+                        mItemLefts[row] = 0;
+                        mItemRights[row] = 0;
+                    }
+                }
+            }
         }
     }
 
