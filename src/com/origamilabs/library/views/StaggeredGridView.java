@@ -419,6 +419,10 @@ public class StaggeredGridView extends ViewGroup {
         setColumnCount(COLUMN_COUNT_AUTO);
     }
 
+    public int getItemMargin() {
+        return mItemMargin;
+    }
+
     /**
      * Set the margin between items in pixels. This margin is applied
      * both vertically and horizontally.
