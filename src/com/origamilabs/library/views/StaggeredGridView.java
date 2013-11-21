@@ -99,7 +99,7 @@ public class StaggeredGridView extends ViewGroup {
      * since the cached information no longer applies.
      */
 
-    private ListAdapter mAdapter;
+    private StaggeredGridAdapter mAdapter;
 
     public static final int COLUMN_COUNT_AUTO = -1;
 
@@ -249,19 +249,20 @@ public class StaggeredGridView extends ViewGroup {
     private Rect mTouchFrame;
     
     private static final class LayoutRecord {
-        public int column;
-        public int row;
+//        public int column;
+//        public int row;
+        public int top;
+        public int left;
         public long id = -1;
         public int height;
         public int width;
-        public int span;
         private int[] mMargins;
 
         private final void ensureMargins() {
             if (mMargins == null) {
                 // Don't need to confirm length;
                 // all layoutrecords are purged when column count changes.
-                mMargins = new int[span * 2];
+                mMargins = new int[1 * 2];
             }
         }
 
@@ -327,8 +328,7 @@ public class StaggeredGridView extends ViewGroup {
 
         @Override
         public String toString() {
-            String result = "LayoutRecord{c=" + column + ", id=" + id + " h=" + height +
-                    " s=" + span;
+            String result = "LayoutRecord{c=" + ", id=" + id + " h=" + height;
             if (mMargins != null) {
                 result += " margins[above, below](";
                 for (int i = 0; i < mMargins.length; i += 2) {
@@ -929,17 +929,17 @@ public class StaggeredGridView extends ViewGroup {
                     final int bottom = child.getBottom();
                     final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
 
-                    final int colEnd = lp.column + Math.min(mColCount, lp.span);
-                    for (int col = lp.column; col < colEnd; col++) {
-                        final int colTop = top - rec.getMarginAbove(col - lp.column);
-                        final int colBottom = bottom + rec.getMarginBelow(col - lp.column);
-                        if (colTop < mItemTops[col]) {
-                            mItemTops[col] = colTop;
-                        }
-                        if (colBottom > mItemBottoms[col]) {
-                            mItemBottoms[col] = colBottom;
-                        }
-                    }
+//                    final int colEnd = lp.column + mColCount;
+//                    for (int col = lp.column; col < colEnd; col++) {
+//                        final int colTop = top - rec.getMarginAbove(col - lp.column);
+//                        final int colBottom = bottom + rec.getMarginBelow(col - lp.column);
+//                        if (colTop < mItemTops[col]) {
+//                            mItemTops[col] = colTop;
+//                        }
+//                        if (colBottom > mItemBottoms[col]) {
+//                            mItemBottoms[col] = colBottom;
+//                        }
+//                    }
                 }
 
                 for (int col = 0; col < mColCount; col++) {
@@ -953,78 +953,78 @@ public class StaggeredGridView extends ViewGroup {
         }
         else {
             //TODO uncomment
-            final int width = getWidth();
-            final int clearLeft = -mItemMargin;
-            final int clearRight = width + mItemMargin;
-            for (int i = getChildCount() - 1; i >= 0; i--) {
-                final View child = getChildAt(i);
-                if (child.getTop() <= clearRight)  {
-                    // There may be other offscreen views, but we need to maintain
-                    // the invariant documented above.
-                    break;
-                }
-
-                if (mInLayout) {
-                    removeViewsInLayout(i, 1);
-                } else {
-                    removeViewAt(i);
-                }
-
-                mRecycler.addScrap(child);
-            }
-
-            while (getChildCount() > 0) {
-                final View child = getChildAt(0);
-                if (child.getBottom() >= clearLeft) {
-                    // There may be other offscreen views, but we need to maintain
-                    // the invariant documented above.
-                    break;
-                }
-
-                if (mInLayout) {
-                    removeViewsInLayout(0, 1);
-                } else {
-                    removeViewAt(0);
-                }
-
-                mRecycler.addScrap(child);
-                mFirstPosition++;
-            }
-
-            final int childCount = getChildCount();
-            if (childCount > 0) {
-                // Repair the top and bottom column boundaries from the views we still have
-                Arrays.fill(mItemLefts, Integer.MAX_VALUE);
-                Arrays.fill(mItemRights, Integer.MIN_VALUE);
-
-                for (int i = 0; i < childCount; i++){
-                    final View child = getChildAt(i);
-                    final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-                    final int left = child.getLeft() - mItemMargin;
-                    final int right = child.getRight();
-                    final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
-
-                    final int rowEnd = lp.row + Math.min(mRowCount, lp.span);
-                    for (int row = lp.row; row < rowEnd; row++) {
-                        final int rowLeft = left - rec.getMarginToLeft(row - lp.row);
-                        final int rowRight = right + rec.getMarginToRight(row - lp.row);
-                        if (rowLeft < mItemLefts[row]) {
-                            mItemLefts[row] = rowLeft;
-                        }
-                        if (rowRight > mItemRights[row]) {
-                            mItemRights[row] = rowRight;
-                        }
-                    }
-                }
-
-                for (int row = 0; row < mRowCount; row++) {
-                    if (mItemLefts[row] == Integer.MAX_VALUE) {
-                        // If one was untouched, both were.
-                        mItemLefts[row] = 0;
-                        mItemRights[row] = 0;
-                    }
-                }
-            }
+//            final int width = getWidth();
+//            final int clearLeft = -mItemMargin;
+//            final int clearRight = width + mItemMargin;
+//            for (int i = getChildCount() - 1; i >= 0; i--) {
+//                final View child = getChildAt(i);
+//                if (child.getTop() <= clearRight)  {
+//                    // There may be other offscreen views, but we need to maintain
+//                    // the invariant documented above.
+//                    break;
+//                }
+//
+//                if (mInLayout) {
+//                    removeViewsInLayout(i, 1);
+//                } else {
+//                    removeViewAt(i);
+//                }
+//
+//                mRecycler.addScrap(child);
+//            }
+//
+//            while (getChildCount() > 0) {
+//                final View child = getChildAt(0);
+//                if (child.getBottom() >= clearLeft) {
+//                    // There may be other offscreen views, but we need to maintain
+//                    // the invariant documented above.
+//                    break;
+//                }
+//
+//                if (mInLayout) {
+//                    removeViewsInLayout(0, 1);
+//                } else {
+//                    removeViewAt(0);
+//                }
+//
+//                mRecycler.addScrap(child);
+//                mFirstPosition++;
+//            }
+//
+//            final int childCount = getChildCount();
+//            if (childCount > 0) {
+//                // Repair the top and bottom column boundaries from the views we still have
+//                Arrays.fill(mItemLefts, Integer.MAX_VALUE);
+//                Arrays.fill(mItemRights, Integer.MIN_VALUE);
+//
+//                for (int i = 0; i < childCount; i++){
+//                    final View child = getChildAt(i);
+//                    final LayoutParams lp = (LayoutParams) child.getLayoutParams();
+//                    final int left = child.getLeft() - mItemMargin;
+//                    final int right = child.getRight();
+//                    final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
+//
+//                    final int rowEnd = lp.row + mRowCount;
+//                    for (int row = lp.row; row < rowEnd; row++) {
+//                        final int rowLeft = left - rec.getMarginToLeft(row - lp.row);
+//                        final int rowRight = right + rec.getMarginToRight(row - lp.row);
+//                        if (rowLeft < mItemLefts[row]) {
+//                            mItemLefts[row] = rowLeft;
+//                        }
+//                        if (rowRight > mItemRights[row]) {
+//                            mItemRights[row] = rowRight;
+//                        }
+//                    }
+//                }
+//
+//                for (int row = 0; row < mRowCount; row++) {
+//                    if (mItemLefts[row] == Integer.MAX_VALUE) {
+//                        // If one was untouched, both were.
+//                        mItemLefts[row] = 0;
+//                        mItemRights[row] = 0;
+//                    }
+//                }
+//            }
         }
     }
 
@@ -1370,6 +1370,7 @@ public class StaggeredGridView extends ViewGroup {
      * @param queryAdapter true to requery the adapter for view data
      */
     final void layoutChildren(boolean queryAdapter) {
+
         final int itemMargin = mItemMargin;
 
         final int paddingLeft = getPaddingLeft();
@@ -1389,17 +1390,19 @@ public class StaggeredGridView extends ViewGroup {
             Arrays.fill(mItemBottoms, Integer.MIN_VALUE);
         }
         else {
-            Arrays.fill(mItemRights, Integer.MIN_VALUE);
+            Arrays.fill(mItemRights, 0);
         }
 
         final int childCount = getChildCount();
         int amountRemoved = 0;
-        
+
+        int currRight = 0;
+        int currTop = 0;
+
         for (int i = 0; i < childCount; i++) {
             View child = getChildAt(i);
             LayoutParams lp = (LayoutParams) child.getLayoutParams();
-            final int col = lp.column;
-            final int row = lp.row;
+
             final int position = mFirstPosition + i;
             final boolean needsLayout = queryAdapter || child.isLayoutRequested();
             
@@ -1424,7 +1427,7 @@ public class StaggeredGridView extends ViewGroup {
             if (needsLayout) {
 
                 if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-                    final int span = Math.min(mColCount, lp.span);
+                    final int span = mColCount;
                     final int widthSize = colWidth * span + itemMargin * (span - 1);
                     final int widthSpec = MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.EXACTLY);
 
@@ -1438,7 +1441,7 @@ public class StaggeredGridView extends ViewGroup {
                     child.measure(widthSpec, heightSpec);
                 }
                 else {
-                    final int span = Math.min(mRowCount, lp.span);
+                    final int span = mRowCount;
                     final int heightSize = rowHeight * span + itemMargin * (span - 1);
 
                     final int heightSpec = MeasureSpec.makeMeasureSpec(MeasureSpec.EXACTLY, heightSize);
@@ -1454,74 +1457,94 @@ public class StaggeredGridView extends ViewGroup {
                 }
             }
 
-            if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-                int childTop = mItemBottoms[col] > Integer.MIN_VALUE ? mItemBottoms[col] + mItemMargin : child.getTop();
-                final int span = Math.min(mColCount, lp.span);
-                if (span > 1) {
-                    int lowest = childTop;
-                    for (int j = col + 1; j < col + span; j++) {
-                        final int bottom = mItemBottoms[j] + mItemMargin;
-                        if (bottom > lowest) {
-                            lowest = bottom;
-                        }
-                    }
-                    childTop = lowest;
-                }
-                final int childHeight = child.getMeasuredHeight();
-                final int childBottom = childTop + childHeight;
-                final int childLeft = paddingLeft + col * (colWidth + itemMargin);
-                final int childRight = childLeft + child.getMeasuredWidth();
-                child.layout(childLeft, childTop, childRight, childBottom);
-                for (int j = col; j < col + span; j++) {
-                    mItemBottoms[j] = childBottom;
-                }
-                final LayoutRecord rec = mLayoutRecords.get(position);
-                if (rec != null && rec.height != childHeight) {
-                    // Invalidate our layout records for everything before this.
-                    rec.height = childHeight;
-                    rebuildLayoutRecordsBefore = position;
-                }
+//            final int top = lp.top;
+//            final int left = lp.left;
 
-                if (rec != null && rec.span != span) {
-                    // Invalidate our layout records for everything after this.
-                    rec.span = span;
-                    rebuildLayoutRecordsAfter = position;
-                }
+            if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
+//                int childTop = mItemBottoms[col] > Integer.MIN_VALUE ? mItemBottoms[col] + mItemMargin : child.getTop();
+//                final int span = mColCount;
+//                if (span > 1) {
+//                    int lowest = childTop;
+//                    for (int j = col + 1; j < col + span; j++) {
+//                        final int bottom = mItemBottoms[j] + mItemMargin;
+//                        if (bottom > lowest) {
+//                            lowest = bottom;
+//                        }
+//                    }
+//                    childTop = lowest;
+//                }
+//                final int childHeight = child.getMeasuredHeight();
+//                final int childBottom = childTop + childHeight;
+//                final int childLeft = paddingLeft + col * (colWidth + itemMargin);
+//                final int childRight = childLeft + child.getMeasuredWidth();
+//                child.layout(childLeft, childTop, childRight, childBottom);
+//                for (int j = col; j < col + span; j++) {
+//                    mItemBottoms[j] = childBottom;
+//                }
+//                final LayoutRecord rec = mLayoutRecords.get(position);
+//                if (rec != null && rec.height != childHeight) {
+//                    // Invalidate our layout records for everything before this.
+//                    rec.height = childHeight;
+//                    rebuildLayoutRecordsBefore = position;
+//                }
+
+//TODO:sarah
+//                if (rec != null && rec.span != span) {
+//                    // Invalidate our layout records for everything after this.
+//                    rec.span = span;
+//                    rebuildLayoutRecordsAfter = position;
+//                }
             }
             else {
-                int childLeft = mItemRights[row] > Integer.MIN_VALUE ? mItemRights[row] + mItemMargin : child.getLeft();
-                final int span = Math.min(mRowCount, lp.span);
-                if (span > 1) {
-                    int lowest = childLeft;
-                    for (int j = row + 1; j < row + span; j++) {
-                        final int right = mItemRights[j] + mItemMargin;
-                        if (right > lowest) {
-                            lowest = right;
-                        }
-                    }
-                    childLeft = lowest;
-                }
+//                int childLeft = mItemRights[row] > Integer.MIN_VALUE ? mItemRights[row] + mItemMargin : child.getLeft();
+//                final int span = mRowCount;
+//                if (span > 1) {
+//                    int lowest = childLeft;
+//                    for (int j = row + 1; j < row + span; j++) {
+//                        final int right = mItemRights[j] + mItemMargin;
+//                        if (right > lowest) {
+//                            lowest = right;
+//                        }
+//                    }
+//                    childLeft = lowest;
+//                }
+//                final int childLeft = currLeft;
+                final int childWidth = child.getMeasuredWidth();
                 final int childHeight = child.getMeasuredHeight();
-                final int childTop = paddingTop + row * (rowHeight + itemMargin);
+                final int childTop = currTop; //paddingTop + row * (rowHeight + itemMargin);
                 final int childBottom = childTop + childHeight;
-                final int childRight = childLeft + child.getMeasuredWidth();
+                final int childLeft = currRight;
+                final int childRight = childLeft + childWidth;
+//                final int childRight = childLeft + child.getMeasuredWidth();
+                Log.d("LAYING OUT", "left:"+String.valueOf(childLeft)+ " top:"+String.valueOf(childTop) + " right:"+String.valueOf(childRight) + "bottom"+String.valueOf(childBottom));
                 child.layout(childLeft, childTop, childRight, childBottom);
-                for (int j = row; j < row + span; j++) {
-                    mItemRights[j] = childRight;
-                }
+//                for (int j = row; j < row + span; j++) {
+//                    mItemRights[j] = childRight;
+//                }
                 final LayoutRecord rec = mLayoutRecords.get(position);
                 if (rec != null && rec.height != childHeight) {
                     // Invalidate our layout records for everything before this.
                     rec.height = childHeight;
                     rebuildLayoutRecordsBefore = position;
                 }
+//TODO:sarah
+//                if (rec != null && rec.span != span) {
+//                    // Invalidate our layout records for everything after this.
+//                    rec.span = span;
+//                    rebuildLayoutRecordsAfter = position;
+//                }
 
-                if (rec != null && rec.span != span) {
-                    // Invalidate our layout records for everything after this.
-                    rec.span = span;
-                    rebuildLayoutRecordsAfter = position;
-                }
+                updateRights(childTop, childRight);
+
+//                int nextLeftIndex = getNextLeftIndex();
+//                currLeft = mItemLefts[nextLeftIndex];
+//                currTop = mRowHeight * nextLeftIndex; //getNextTop(currTop, childBottom, paddingTop, getHeight());
+
+                int nextRightIndex = getNextRightIndex();
+                currRight = mItemRights[nextRightIndex];
+                currTop = mRowHeight * nextRightIndex; //getNextTop(currTop, childBottom, paddingTop, getHeight());
             }
+
         }
 
         if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
@@ -1558,18 +1581,19 @@ public class StaggeredGridView extends ViewGroup {
                     rec = new LayoutRecord();
                     mLayoutRecords.put(position, rec);
                 }
-                if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-                    rec.column = lp.column;
-                    rec.height = child.getHeight();
-                    rec.span = Math.min(mColCount, lp.span);
-                }
-                else {
-                    rec.row = lp.row;
-                    rec.width = child.getWidth();
-                    rec.span = Math.min(mRowCount, lp.span);
-                }
-                rec.id = lp.id;
+//                if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
+//                    rec.column = lp.column;
+//                }
+//                else {
+//                    rec.row = lp.row;
+//                }
 
+//                rec.left =
+//                rec.top =
+
+                rec.width = child.getWidth();
+                rec.height = child.getHeight();
+                rec.id = lp.id;
             }
         }
         
@@ -1654,7 +1678,7 @@ public class StaggeredGridView extends ViewGroup {
                 }
             }
 
-            final int span = Math.min(mColCount, lp.span);
+            final int span = mColCount;
             final int widthSize = colWidth * span + itemMargin * (span - 1);
             final int widthSpec = MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.EXACTLY);
 
@@ -1670,15 +1694,15 @@ public class StaggeredGridView extends ViewGroup {
             if (rec == null) {
                 rec = new LayoutRecord();
                 mLayoutRecords.put(position, rec);
-                rec.column = nextCol;
-                rec.span = span;
-            } else if (span != rec.span) {
-                rec.span = span;
-                rec.column = nextCol;
-                invalidateBefore = true;
-            } else {
-//                nextCol = rec.column;
+//                rec.column = nextCol;
             }
+//TODO:sarah
+//            else if (span != rec.span) {
+//                rec.column = nextCol;
+//                invalidateBefore = true;
+//            } else {
+////                nextCol = rec.column;
+//            }
 
             if (mHasStableIds) {
                 final long id = mAdapter.getItemId(position);
@@ -1686,7 +1710,7 @@ public class StaggeredGridView extends ViewGroup {
                 lp.id = id;
             }
 
-            lp.column = nextCol;
+//            lp.column = nextCol;
 
             final int heightSpec;
             if (lp.height == LayoutParams.WRAP_CONTENT) {
@@ -1730,7 +1754,7 @@ public class StaggeredGridView extends ViewGroup {
 //            		childBottom = childTop + childHeight;
 //            	}
 //            }
-            
+            Log.d("LAYING OUT", "left:"+String.valueOf(childLeft)+ " top:"+String.valueOf(childTop) + " right:"+String.valueOf(childRight) + "bottom"+String.valueOf(childBottom));
             child.layout(childLeft, childTop, childRight, childBottom);
 
             
@@ -1771,26 +1795,29 @@ public class StaggeredGridView extends ViewGroup {
 
         final int paddingTop = getPaddingTop();
         final int paddingBottom = getPaddingBottom();
+        final int maxBottom = getHeight() - paddingBottom;
         final int itemMargin = mItemMargin;
-        final int rowHeight =
-                (getHeight() - paddingTop - paddingBottom - itemMargin * (mRowCount - 1)) / mRowCount;
+        final int rowHeight = (getHeight() - paddingTop - paddingBottom - itemMargin * (mRowCount - 1)) / mRowCount;
         mRowHeight = rowHeight;
         final int gridLeft = getPaddingLeft();
         final int fillTo = gridLeft - overhang;
-        int nextRow = getNextRowToLeft();
+
+        int nextTop = 0;
+        int nextLeft = 0;
+
         int position = fromPosition;
 
-        while (nextRow >= 0 && mItemLefts[nextRow] > fillTo && position >= 0) {
+        while (nextLeft >= 0 && nextLeft > fillTo && position >= 0) {
             // make sure the nextCol is correct. check to see if has been mapped
             // otherwise stick to getNextColumnUp()
-            if(!mColMappings.get(nextRow).contains((Integer) position)){
-                for(int i=0; i < mColMappings.size(); i++){
-                    if(mColMappings.get(i).contains((Integer) position)){
-                        nextRow = i;
-                        break;
-                    }
-                }
-            }
+//            if(!mColMappings.get(nextRow).contains((Integer) position)){
+//                for(int i=0; i < mColMappings.size(); i++){
+//                    if(mColMappings.get(i).contains((Integer) position)){
+//                        nextRow = i;
+//                        break;
+//                    }
+//                }
+//            }
 
 //        	displayMapping();
 
@@ -1813,75 +1840,82 @@ public class StaggeredGridView extends ViewGroup {
                 }
             }
 
-            final int span = Math.min(mRowCount, lp.span);
-            final int heightSize = rowHeight * span + itemMargin * (span - 1);
-            final int heightSpec = MeasureSpec.makeMeasureSpec(heightSize, MeasureSpec.EXACTLY);
+//            final int span = mRowCount;
+//            final int heightSize = rowHeight * span + itemMargin * (span - 1);
+//            final int heightSpec = MeasureSpec.makeMeasureSpec(heightSize, MeasureSpec.EXACTLY);
 
-            LayoutRecord rec;
-            if (span > 1) {
-                rec = getNextRecordLeft(position, span);
-//                nextCol = rec.column;
-            } else {
-                rec = mLayoutRecords.get(position);
-            }
+//            LayoutRecord rec;
+//            if (span > 1) {
+//                rec = getNextRecordLeft(position, span);
+////                nextCol = rec.column;
+//            } else {
+//                rec = mLayoutRecords.get(position);
+//            }
 
             boolean invalidateBefore = false;
-            if (rec == null) {
-                rec = new LayoutRecord();
-                mLayoutRecords.put(position, rec);
-                rec.row = nextRow;
-                rec.span = span;
-            } else if (span != rec.span) {
-                rec.span = span;
-                rec.row = nextRow;
-                invalidateBefore = true;
-            } else {
+//            if (rec == null) {
+//                rec = new LayoutRecord();
+//                mLayoutRecords.put(position, rec);
+//                rec.row = nextRow;
+//            }
+//TODO:sarah
+//            else if (span != rec.span) {
+//                rec.row = nextRow;
+//                invalidateBefore = true;
+//            } else {
 //                nextCol = rec.column;
-            }
+//            }
 
             if (mHasStableIds) {
                 final long id = mAdapter.getItemId(position);
-                rec.id = id;
+//                rec.id = id;
                 lp.id = id;
             }
 
-            lp.row = nextRow;
+//            lp.row = nextRow;
 
-            final int widthSpec;
-            if (lp.width == LayoutParams.WRAP_CONTENT) {
-                widthSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-            } else {
-                widthSpec = MeasureSpec.makeMeasureSpec(lp.width, MeasureSpec.EXACTLY);
-            }
-            child.measure(widthSpec, heightSpec);
-
-            final int childHeight = child.getMeasuredHeight();
-            final int childWidth = child.getMeasuredWidth();
-            if (invalidateBefore || (childWidth != rec.width && rec.width > 0)) {
-                invalidateLayoutRecordsBeforePosition(position); //TODO:lookatit
-            }
-            rec.width = childWidth;
-
-            int itemLeft = mItemLefts[nextRow];
-
-            final int startFrom;
-            if (span > 1) {
-                int highest = mItemLefts[nextRow];
-                for (int i = nextRow + 1; i < nextRow + span; i++) {
-                    final int left = mItemLefts[i];
-                    if (left < highest) {
-                        highest = left;
-                    }
-                }
-                startFrom = highest;
-            } else {
-                startFrom = mItemLefts[nextRow];
-            }
+//            final int widthSpec;
+//            if (lp.width == LayoutParams.WRAP_CONTENT) {
+//                widthSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+//            } else {
+//                widthSpec = MeasureSpec.makeMeasureSpec(lp.width, MeasureSpec.EXACTLY);
+//            }
+//            child.measure(widthSpec, heightSpec);
 
 
-            int childRight = startFrom;
-            int childLeft = childRight - childWidth;
-            final int childTop = paddingTop + nextRow * (rowHeight + itemMargin);
+//            final int childHeight = child.getMeasuredHeight();
+//            final int childWidth = child.getMeasuredWidth();
+
+            ItemSize itemSize = mAdapter.getItemSize(position);
+            final int childWidth = itemSize.width;
+            final int childHeight = itemSize.height;
+
+//            if (invalidateBefore || (childWidth != rec.width && rec.width > 0)) {
+//                invalidateLayoutRecordsBeforePosition(position); //TODO:lookatit
+//            }
+//            rec.width = childWidth;
+
+//            int itemLeft = mItemLefts[nextRow];
+//
+//            final int startFrom;
+//            if (span > 1) {
+//                int highest = mItemLefts[nextRow];
+//                for (int i = nextRow + 1; i < nextRow + span; i++) {
+//                    final int left = mItemLefts[i];
+//                    if (left < highest) {
+//                        highest = left;
+//                    }
+//                }
+//                startFrom = highest;
+//            } else {
+//                startFrom = mItemLefts[nextRow];
+//            }
+
+
+
+            int childLeft = nextLeft; //childRight - childWidth
+            int childRight = childLeft - childWidth;
+            final int childTop = nextTop + ((nextTop == paddingTop)?0:itemMargin);
             final int childBottom = childTop + childHeight;
 
 //            if(position == 0){
@@ -1890,15 +1924,28 @@ public class StaggeredGridView extends ViewGroup {
 //            		childBottom = childTop + childHeight;
 //            	}
 //            }
-
+            Log.d("LAYING OUT", "left:"+String.valueOf(childLeft)+ " top:"+String.valueOf(childTop) + " right:"+String.valueOf(childRight) + "bottom"+String.valueOf(childBottom));
             child.layout(childLeft, childTop, childRight, childBottom);
 
 
-            for (int i = nextRow; i < nextRow + span; i++) {
-                mItemLefts[i] = childLeft - rec.getMarginToLeft(i-nextRow) - itemMargin;
-            }
+//            for (int i = nextRow; i < nextRow + span; i++) {
+//                mItemLefts[i] = childLeft - rec.getMarginToLeft(i-nextRow) - itemMargin;
+//            }
+//
+//            nextRow = getNextRowToLeft();
 
-            nextRow = getNextRowToLeft();
+
+            updateLefts(childTop, childLeft);
+
+            int nextLeftIndex = getNextLeftIndex();
+            nextLeft = mItemLefts[nextLeftIndex];
+
+            nextTop = mRowHeight * nextLeftIndex;
+
+
+
+            Log.d("NEXT INFOS", "top:" + String.valueOf(nextTop) + " left:"+ String.valueOf(nextLeft));
+
             mFirstPosition = position--;
         }
 
@@ -1920,7 +1967,39 @@ public class StaggeredGridView extends ViewGroup {
         return gridLeft - highestView;
     }
 
-    
+    private void updateLefts(int childTop, int childLeft) {
+        int index = rowIndexForTop(childTop);
+        mItemLefts[index] = childLeft;
+    }
+
+    private int getNextLeftIndex() {
+        int leftMost = Integer.MIN_VALUE;
+        final int rowCount = mRowCount;
+        int index = -1;
+
+        for (int i = rowCount - 1; i >= 0; i--) {
+            final int left = mItemLefts[i];
+            if (left > leftMost) {
+                leftMost = left;
+                index = i;
+            }
+        }
+        return index;
+    }
+
+//    private int getNextLeft() {
+//        int leftMost = Integer.MIN_VALUE;
+//        final int rowCount = mRowCount;
+//
+//        for (int i = rowCount - 1; i >= 0; i--) {
+//            final int left = mItemLefts[i];
+//            if (left > leftMost) {
+//                leftMost = left;
+//            }
+//        }
+//        return leftMost;
+//    }
+
     private View getFirstChildAtColumn(int column){
     	
     	if(this.getChildCount() > column){
@@ -2014,7 +2093,7 @@ public class StaggeredGridView extends ViewGroup {
                 }
             }
 
-            final int span = Math.min(mColCount, lp.span);
+            final int span = mColCount;
             final int widthSize = colWidth * span + itemMargin * (span - 1);
             final int widthSpec = MeasureSpec.makeMeasureSpec(widthSize, MeasureSpec.EXACTLY);
 
@@ -2030,15 +2109,16 @@ public class StaggeredGridView extends ViewGroup {
             if (rec == null) {
                 rec = new LayoutRecord();
                 mLayoutRecords.put(position, rec);
-                rec.column = nextCol;
-                rec.span = span;
-            } else if (span != rec.span) {
-                rec.span = span;
-                rec.column = nextCol;
-                invalidateAfter = true;
-            } else {
-//                nextCol = rec.column;
+//                rec.column = nextCol;
             }
+//TODO:sarah
+//            else if (span != rec.span) {
+//                rec.span = span;
+//                rec.column = nextCol;
+//                invalidateAfter = true;
+//            } else {
+////                nextCol = rec.column;
+//            }
 
             if (mHasStableIds) {
                 final long id = mAdapter.getItemId(position);
@@ -2046,7 +2126,7 @@ public class StaggeredGridView extends ViewGroup {
                 lp.id = id;
             }
 
-            lp.column = nextCol;
+//            lp.column = nextCol;
 
             final int heightSpec;
             if (lp.height == LayoutParams.WRAP_CONTENT) {
@@ -2082,6 +2162,7 @@ public class StaggeredGridView extends ViewGroup {
             final int childBottom = childTop + childHeight;
             final int childLeft = paddingLeft + nextCol * (colWidth + itemMargin);
             final int childRight = childLeft + child.getMeasuredWidth();
+            Log.d("LAYING OUT", "left:"+String.valueOf(childLeft)+ " top:"+String.valueOf(childTop) + " right:"+String.valueOf(childRight) + "bottom"+String.valueOf(childBottom));
             child.layout(childLeft, childTop, childRight, childBottom);
 
             
@@ -2127,16 +2208,25 @@ public class StaggeredGridView extends ViewGroup {
      * @return the max overhang beyond the end of the view of any added items at the right
      */
     final int fillRight(int fromPosition, int overhang) {
+
+
         final int paddingTop = getPaddingTop();
         final int paddingBottom = getPaddingBottom();
+        final int maxBottom = getHeight() - paddingBottom;
         final int itemMargin = mItemMargin;
+
         final int rowHeight = (getHeight() - paddingTop - paddingBottom - itemMargin * (mRowCount - 1)) / mRowCount;
+        mRowHeight = rowHeight;
+
         final int gridRight = getWidth() - getPaddingRight();
         final int fillTo = gridRight + overhang;
-        int nextRow = getNextColumnRight(fromPosition);
+
+        int nextTop = getNextColumnRight(fromPosition);
+        int nextRight = 0;
+
         int position = fromPosition;
 
-        while (nextRow >= 0 && mItemRights[nextRow] < fillTo && position < mItemCount) {
+        while (nextTop >= 0 && nextRight < fillTo && position < mItemCount) {
 
             final View child = obtainView(position, null);
 
@@ -2155,100 +2245,113 @@ public class StaggeredGridView extends ViewGroup {
                 }
             }
 
-            final int span = Math.min(mRowCount, lp.span);
-            final int heightSize = rowHeight * span + itemMargin * (span - 1);
-            final int heightSpec = MeasureSpec.makeMeasureSpec(heightSize, MeasureSpec.EXACTLY);
+//            final int heightSize = rowHeight * span + itemMargin * (span - 1);
+//            final int heightSpec = MeasureSpec.makeMeasureSpec(heightSize, MeasureSpec.EXACTLY);
 
-            LayoutRecord rec;
-            if (span > 1) {
-                rec = getNextRecordRight(position, span);
-//                nextCol = rec.column;
-            } else {
-                rec = mLayoutRecords.get(position);
-            }
+//            LayoutRecord rec;
+//            if (span > 1) {
+//                rec = getNextRecordRight(position, span);
+////                nextCol = rec.column;
+//            } else {
+//                rec = mLayoutRecords.get(position);
+//            }
 
             boolean invalidateAfter = false;
-            if (rec == null) {
-                rec = new LayoutRecord();
-                mLayoutRecords.put(position, rec);
-                rec.row = nextRow;
-                rec.span = span;
-            } else if (span != rec.span) {
-                rec.span = span;
-                rec.row = nextRow;
-                invalidateAfter = true;
-            } else {
-//                nextCol = rec.column;
-            }
+//            if (rec == null) {
+//                rec = new LayoutRecord();
+//                mLayoutRecords.put(position, rec);
+//                rec.row = nextRow;
+//            }
+//            else if (span != rec.span) {
+//                rec.span = span;
+//                rec.row = nextRow;
+//                invalidateAfter = true;
+//            } else {
+////                nextCol = rec.column;
+//            }
 
             if (mHasStableIds) {
                 final long id = mAdapter.getItemId(position);
-                rec.id = id;
+//                rec.id = id;
                 lp.id = id;
             }
 
-            lp.row = nextRow;
+//            lp.row = nextRow;
 
-            final int widthSpec;
-            if (lp.width == LayoutParams.WRAP_CONTENT) {
-                widthSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
-            } else {
-                widthSpec = MeasureSpec.makeMeasureSpec(lp.width, MeasureSpec.EXACTLY);
-            }
-            child.measure(widthSpec, heightSpec);
+//            final int widthSpec;
+//            if (lp.width == LayoutParams.WRAP_CONTENT) {
+//                widthSpec = MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+//            } else {
+//                widthSpec = MeasureSpec.makeMeasureSpec(lp.width, MeasureSpec.EXACTLY);
+//            }
+//            child.measure(widthSpec, heightSpec);
 
-            final int childWidth = child.getMeasuredWidth();
-            final int childHeight = child.getMeasuredHeight();
-            if (invalidateAfter || (childWidth != rec.width && rec.width > 0)) {
-                invalidateLayoutRecordsAfterPosition(position); //TODO:lookatit
-            }
-            rec.width = childWidth;
+            ItemSize itemSize = mAdapter.getItemSize(position);
+            final int childWidth = itemSize.width;
+            final int childHeight = itemSize.height;
 
-            final int startFrom;
-            if (span > 1) {
-                int lowest = mItemRights[nextRow];
-                for (int i = nextRow + 1; i < nextRow + span; i++) {
-                    final int right = mItemRights[i];
-                    if (right > lowest) {
-                        lowest = right;
-                    }
-                }
-                startFrom = lowest;
-            } else {
-                startFrom = mItemRights[nextRow];
-            }
+//            final int childWidth = child.getMeasuredWidth();
+//            final int childHeight = child.getMeasuredHeight();
+
+//            if (invalidateAfter || (childWidth != rec.width && rec.width > 0)) {
+//                invalidateLayoutRecordsAfterPosition(position); //TODO:lookatit
+//            }
+//            rec.width = childWidth;
+
+//            final int startFrom;
+//            if (span > 1) {
+//                int lowest = mItemRights[nextRow];
+//                for (int i = nextRow + 1; i < nextRow + span; i++) {
+//                    final int right = mItemRights[i];
+//                    if (right > lowest) {
+//                        lowest = right;
+//                    }
+//                }
+//                startFrom = lowest;
+//            } else {
+//                startFrom = mItemRights[nextRow];
+//            }
 
 
-            final int childLeft = startFrom + itemMargin;
-            final int childTop = paddingTop + nextRow * (rowHeight + itemMargin);
+            int childLeft = nextRight + itemMargin;
+            int childTop = nextTop + ((nextTop == paddingTop)?0:itemMargin);
             final int childBottom = childTop + childHeight;
             final int childRight = childLeft + childWidth;
+
+            Log.d("LAYING OUT", "left:"+String.valueOf(childLeft)+ " top:"+String.valueOf(childTop) + " right:"+String.valueOf(childRight) + "bottom"+String.valueOf(childBottom));
             child.layout(childLeft, childTop, childRight, childBottom);
 
 
-            // add the position to the mapping
-            if(!mRowMappings.get(nextRow).contains(position)){
+//            // add the position to the mapping
+//            if(!mRowMappings.get(nextRow).contains(position)){
+//
+//                // check to see if the mapping exists in other columns
+//                // this would happen if list has been updated
+//                for(ArrayList<Integer> list : mRowMappings){
+//                    if(list.contains(position)){
+//                        list.remove((Integer) position);
+//                    }
+//                }
+//
+//                mRowMappings.get(nextRow).add(position);
+//
+//            }
 
-                // check to see if the mapping exists in other columns
-                // this would happen if list has been updated
-                for(ArrayList<Integer> list : mRowMappings){
-                    if(list.contains(position)){
-                        list.remove((Integer) position);
-                    }
-                }
 
-                mRowMappings.get(nextRow).add(position);
+//            for (int i = nextRow; i < nextRow + span; i++) {
+//                mItemRights[i] = childRight + rec.getMarginToRight(i - nextRow);
+//            }
 
-            }
-
-
-            for (int i = nextRow; i < nextRow + span; i++) {
-                mItemRights[i] = childRight + rec.getMarginToRight(i - nextRow);
-            }
-
+            updateRights(childTop, childRight);
 
             position++;
-            nextRow = getNextColumnRight(position);
+
+            int nextRightIndex = getNextRightIndex();
+            nextRight = mItemRights[nextRightIndex];
+
+            nextTop = mRowHeight * nextRightIndex; //getNextTop(nextTop, childBottom, paddingTop, getHeight());
+
+            Log.d("NEXT INFOS", "top:" + String.valueOf(nextTop) + " right:"+ String.valueOf(nextRight));
         }
 
         int lowestView = 0;
@@ -2258,6 +2361,51 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
         return lowestView - gridRight;
+    }
+
+    private int rowIndexForTop(int childTop) {
+        return childTop / mRowHeight;
+    }
+
+    private void updateRights(int childTop, int childRight) {
+        int index = rowIndexForTop(childTop);
+        mItemRights[index] = childRight;
+    }
+
+    private int getNextTop(int currentTop, int childBottom, int minTop, int maxTop) {
+        int next = currentTop + childBottom;
+        if (next > maxTop) {
+            return minTop;
+        }
+        return next;
+    }
+
+    private int getNextRightIndex() {
+        int rightMost = Integer.MAX_VALUE;
+        final int rowCount = mRowCount;
+        int index = -1;
+
+        for (int i = 0; i < rowCount; i++) {
+            final int right = mItemRights[i];
+            if (right < rightMost) {
+                rightMost = right;
+                index = i;
+            }
+        }
+        return index;
+    }
+
+    private int getNextRight() {
+        int rightMost = Integer.MAX_VALUE;
+        final int rowCount = mRowCount;
+
+        for (int i = 0; i < rowCount; i++) {
+            final int right = mItemRights[i];
+            if (right < rightMost) {
+                rightMost = right;
+            }
+        }
+        return rightMost;
     }
 
     /**
@@ -2327,12 +2475,13 @@ public class StaggeredGridView extends ViewGroup {
         LayoutRecord rec = mLayoutRecords.get(position);
         if (rec == null) {
             rec = new LayoutRecord();
-            rec.span = span;
             mLayoutRecords.put(position, rec);
-        } else if (rec.span != span) {
-            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
-                    " but caller requested span=" + span + " for position=" + position);
         }
+//TODO:sarah
+//        else if (rec.span != span) {
+//            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
+//                    " but caller requested span=" + span + " for position=" + position);
+//        }
         int targetCol = -1;
         int bottomMost = Integer.MIN_VALUE;
 
@@ -2351,7 +2500,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
 
-        rec.column = targetCol;
+//        rec.column = targetCol;
 
         for (int i = 0; i < span; i++) {
             rec.setMarginBelow(i, mItemTops[i + targetCol] - bottomMost);
@@ -2364,12 +2513,12 @@ public class StaggeredGridView extends ViewGroup {
         LayoutRecord rec = mLayoutRecords.get(position);
         if (rec == null) {
             rec = new LayoutRecord();
-            rec.span = span;
             mLayoutRecords.put(position, rec);
-        } else if (rec.span != span) {
-            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
-                    " but caller requested span=" + span + " for position=" + position);
         }
+//        else if (rec.span != span) {
+//            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
+//                    " but caller requested span=" + span + " for position=" + position);
+//        }
         int targetRow = -1;
         int rightMost = Integer.MIN_VALUE;
 
@@ -2388,7 +2537,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
 
-        rec.row = targetRow;
+//        rec.row = targetRow;
 
         for (int i = 0; i < span; i++) {
             rec.setMarginRight(i, mItemLefts[i + targetRow] - rightMost);
@@ -2443,12 +2592,12 @@ public class StaggeredGridView extends ViewGroup {
         LayoutRecord rec = mLayoutRecords.get(position);
         if (rec == null) {
             rec = new LayoutRecord();
-            rec.span = span;
             mLayoutRecords.put(position, rec);
-        } else if (rec.span != span) {
-            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
-                    " but caller requested span=" + span + " for position=" + position);
         }
+//        else if (rec.span != span) {
+//            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
+//                    " but caller requested span=" + span + " for position=" + position);
+//        }
         int targetCol = -1;
         int topMost = Integer.MAX_VALUE;
 
@@ -2467,7 +2616,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
 
-        rec.column = targetCol;
+//        rec.column = targetCol;
 
         for (int i = 0; i < span; i++) {
             rec.setMarginAbove(i, topMost - mItemBottoms[i + targetCol]);
@@ -2481,12 +2630,13 @@ public class StaggeredGridView extends ViewGroup {
         LayoutRecord rec = mLayoutRecords.get(position);
         if (rec == null) {
             rec = new LayoutRecord();
-            rec.span = span;
             mLayoutRecords.put(position, rec);
-        } else if (rec.span != span) {
-            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
-                    " but caller requested span=" + span + " for position=" + position);
         }
+//TODO:sarah
+//        else if (rec.span != span) {
+//            throw new IllegalStateException("Invalid LayoutRecord! Record had span=" + rec.span +
+//                    " but caller requested span=" + span + " for position=" + position);
+//        }
         int targetRow = -1;
         int leftMost = Integer.MAX_VALUE;
 
@@ -2505,7 +2655,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
 
-        rec.row = targetRow;
+//        rec.row = targetRow;
 
         for (int i = 0; i < span; i++) {
             rec.setMarginToLeft(i, leftMost - mItemRights[i + targetRow]);
@@ -2568,7 +2718,7 @@ public class StaggeredGridView extends ViewGroup {
         return mAdapter;
     }
 
-    public void setAdapter(ListAdapter adapter) {
+    public void setAdapter(StaggeredGridAdapter adapter) {
         if (mAdapter != null) {
             mAdapter.unregisterDataSetObserver(mObserver);
         }
@@ -2751,13 +2901,6 @@ public class StaggeredGridView extends ViewGroup {
             android.R.attr.layout_span
         };
 
-        private static final int SPAN_INDEX = 0;
-
-        /**
-         * The number of columns this item should span
-         */
-        public int span = 1;
-
         /**
          * Item position this view represents
          */
@@ -2769,14 +2912,14 @@ public class StaggeredGridView extends ViewGroup {
         int viewType;
 
         /**
-         * The column this view is occupying
+         * The view's top
          */
-        int column;
+        int top;
 
         /**
-         * The row this view is occupying
+         * The view's left
          */
-        int row;
+        int left;
 
         /**
          * The stable ID of the item this view displays
@@ -2808,7 +2951,6 @@ public class StaggeredGridView extends ViewGroup {
             }
 
             TypedArray a = c.obtainStyledAttributes(attrs, LAYOUT_ATTRS);
-            span = a.getInteger(SPAN_INDEX, 1);
             a.recycle();
         }
 
