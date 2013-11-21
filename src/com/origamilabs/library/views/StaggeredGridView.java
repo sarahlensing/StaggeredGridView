@@ -21,6 +21,7 @@ package com.origamilabs.library.views;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.IllegalFormatException;
 
 import com.origamilabs.library.R;
 
@@ -29,6 +30,7 @@ import android.content.Context;
 import android.content.res.TypedArray;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
+import android.graphics.Point;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.TransitionDrawable;
@@ -1509,8 +1511,19 @@ public class StaggeredGridView extends ViewGroup {
 //                    childLeft = lowest;
 //                }
 //                final int childLeft = currLeft;
+
                 final int childWidth = child.getMeasuredWidth();
                 final int childHeight = child.getMeasuredHeight();
+
+                //ensure space available for this child
+                //nextRight and nextTop dont necc know about available space below themselves
+                if (!ensureAvailableSpaceBelowAndToRight(currRight, currTop, childHeight)) {
+                    //get nextRight and nextTop with available height
+                    Point point = getNextPointBelowAndToRight(currRight, currTop, childHeight);
+                    currRight = point.x;
+                    currTop = point.y;
+                }
+
                 final int childTop = currTop; //paddingTop + row * (rowHeight + itemMargin);
                 final int childBottom = childTop + childHeight;
                 final int childLeft = currRight;
@@ -1534,7 +1547,7 @@ public class StaggeredGridView extends ViewGroup {
 //                    rebuildLayoutRecordsAfter = position;
 //                }
 
-                updateRights(childTop, childRight);
+                updateRights(childTop, childRight, childHeight);
 
 //                int nextLeftIndex = getNextLeftIndex();
 //                currLeft = mItemLefts[nextLeftIndex];
@@ -1911,7 +1924,14 @@ public class StaggeredGridView extends ViewGroup {
 //                startFrom = mItemLefts[nextRow];
 //            }
 
-
+            //ensure space available for this child
+            //nextRight and nextTop dont necc know about available space below themselves
+            if (!ensureAvailableSpaceBelowAndToLeft(nextLeft, nextTop, childHeight)) {
+                //get nextRight and nextTop with available height
+                Point point = getNextPointBelowAndToLeft(nextLeft, nextTop, childHeight);
+                nextLeft = point.x;
+                nextTop = point.y;
+            }
 
             int childLeft = nextLeft; //childRight - childWidth
             int childRight = childLeft - childWidth;
@@ -1935,7 +1955,7 @@ public class StaggeredGridView extends ViewGroup {
 //            nextRow = getNextRowToLeft();
 
 
-            updateLefts(childTop, childLeft);
+            updateLefts(childTop, childLeft, childHeight);
 
             int nextLeftIndex = getNextLeftIndex();
             nextLeft = mItemLefts[nextLeftIndex];
@@ -1967,9 +1987,13 @@ public class StaggeredGridView extends ViewGroup {
         return gridLeft - highestView;
     }
 
-    private void updateLefts(int childTop, int childLeft) {
+    private void updateLefts(int childTop, int childLeft, int childHeight) {
         int index = rowIndexForTop(childTop);
-        mItemLefts[index] = childLeft;
+        int rowSpan = rowSpanForHeight(childHeight);
+        int endIndex = Math.min(index + rowSpan, mItemLefts.length);
+        for (int i = index; i < endIndex; i++) {
+            mItemLefts[i] = childLeft;
+        }
     }
 
     private int getNextLeftIndex() {
@@ -2209,7 +2233,6 @@ public class StaggeredGridView extends ViewGroup {
      */
     final int fillRight(int fromPosition, int overhang) {
 
-
         final int paddingTop = getPaddingTop();
         final int paddingBottom = getPaddingBottom();
         final int maxBottom = getHeight() - paddingBottom;
@@ -2312,6 +2335,14 @@ public class StaggeredGridView extends ViewGroup {
 //                startFrom = mItemRights[nextRow];
 //            }
 
+            //ensure space available for this child
+            //nextRight and nextTop dont necc know about available space below themselves
+            if (!ensureAvailableSpaceBelowAndToRight(nextRight, nextTop, childHeight)) {
+                //get nextRight and nextTop with available height
+                Point point = getNextPointBelowAndToRight(nextRight, nextTop, childHeight);
+                nextRight = point.x;
+                nextTop = point.y;
+            }
 
             int childLeft = nextRight + itemMargin;
             int childTop = nextTop + ((nextTop == paddingTop)?0:itemMargin);
@@ -2342,7 +2373,7 @@ public class StaggeredGridView extends ViewGroup {
 //                mItemRights[i] = childRight + rec.getMarginToRight(i - nextRow);
 //            }
 
-            updateRights(childTop, childRight);
+            updateRights(childTop, childRight, childHeight);
 
             position++;
 
@@ -2363,13 +2394,147 @@ public class StaggeredGridView extends ViewGroup {
         return lowestView - gridRight;
     }
 
+    private Point getNextPointBelowAndToLeft(int potentialNextLeft, int potentialNextTop, int childHeight) {
+        Point ret;
+
+        int itemIndex = rowIndexForTop(potentialNextTop);
+        int itemRowSpan = rowSpanForHeight(childHeight);
+        int endIndex = Math.min(itemIndex + itemRowSpan, mItemLefts.length);
+
+        int clearedSpan = 0;
+        for (int i = itemIndex; i < endIndex; i++) { //make sure that all the rows below are clear
+            int nextLeft = mItemLefts[i];
+            if (nextLeft >= potentialNextLeft) {
+                clearedSpan++;
+            }
+            else {
+                return getNextPointBelowAndToLeft(nextLeft, potentialNextTop, childHeight);
+            }
+            if (clearedSpan > itemRowSpan) {
+                break;
+            }
+        }
+        if (clearedSpan >= itemRowSpan) {
+            ret = new Point(potentialNextLeft, potentialNextTop);
+        }
+        else {
+            itemIndex--;
+            boolean forceRet = false;
+            if (itemIndex < 0) {
+                Log.d("PROBLEM", "ITEM IS TOO BIG FOR GRID");
+                itemIndex = 0; //TODO: more handling
+                forceRet = true;
+            }
+            int nextPotentialLeft = mItemLefts[itemIndex];
+            int nextPotentialTop = itemIndex * mRowHeight;
+            if (forceRet) {
+                Log.d("PROBLEM", "FORCE RETURN");
+                return new Point(nextPotentialLeft, nextPotentialTop);
+            }
+            return getNextPointBelowAndToLeft(nextPotentialLeft, nextPotentialTop, childHeight);
+        }
+        return ret;
+    }
+
+    private Point getNextPointBelowAndToRight(int potentialNextRight, int potentialNextTop, int childHeight) {
+        Point ret;
+
+        int itemIndex = rowIndexForTop(potentialNextTop);
+        int itemRowSpan = rowSpanForHeight(childHeight);
+        int endIndex = Math.min(itemIndex + itemRowSpan, mItemRights.length);
+
+        int clearedSpan = 0;
+        for (int i = itemIndex; i < endIndex; i++) { //make sure that all the rows below are clear
+            int nextRight = mItemRights[i];
+            if (nextRight <= potentialNextRight) {
+                clearedSpan++;
+            }
+            else {
+                return getNextPointBelowAndToRight(nextRight, potentialNextTop, childHeight);
+            }
+            if (clearedSpan > itemRowSpan) {
+                break;
+            }
+        }
+        if (clearedSpan >= itemRowSpan) {
+            ret = new Point(potentialNextRight, potentialNextTop);
+        }
+        else {
+            itemIndex--;
+            boolean forceRet = false;
+            if (itemIndex < 0) {
+                Log.d("PROBLEM", "ITEM IS TOO BIG FOR GRID");
+                itemIndex = 0; //TODO: more handling
+                forceRet = true;
+            }
+            int nextPotentialRight = mItemRights[itemIndex];
+            int nextPotentialTop = itemIndex * mRowHeight;
+            if (forceRet) {
+                Log.d("PROBLEM", "FORCE RETURN");
+                return new Point(nextPotentialRight, nextPotentialTop);
+            }
+            return getNextPointBelowAndToRight(nextPotentialRight, nextPotentialTop, childHeight);
+        }
+        return ret;
+    }
+
+    private boolean ensureAvailableSpaceBelowAndToLeft(int potentialNextLeft, int potentialNextTop, int childHeight) {
+        boolean ret = true;
+        int itemIndex = rowIndexForTop(potentialNextTop);
+        int itemRowSpan = rowSpanForHeight(childHeight);
+        int endIndex = Math.min(itemIndex + itemRowSpan, mItemLefts.length);
+
+        if (mRowCount - itemIndex < itemRowSpan) { //not enough rows available below. ie this child is 2 rows high but we are trying to draw starting at row 1 of 2
+            ret = false;
+        }
+        else {
+            for (int i = itemIndex; i < endIndex; i++) { //make sure that all the rows below are clear
+                int nextLeft = mItemLefts[i];
+                if (nextLeft < potentialNextLeft) {
+                    ret = false;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+
+    private boolean ensureAvailableSpaceBelowAndToRight(int potentialNextRight, int potentialNextTop, int childHeight) {
+        boolean ret = true;
+        int itemIndex = rowIndexForTop(potentialNextTop);
+        int itemRowSpan = rowSpanForHeight(childHeight);
+        int endIndex = Math.min(itemIndex + itemRowSpan, mItemRights.length);
+
+        if (mRowCount - itemIndex < itemRowSpan) { //not enough rows available below. ie this child is 2 rows high but we are trying to draw starting at row 1 of 2
+            ret = false;
+        }
+        else {
+            for (int i = itemIndex; i < endIndex; i++) { //make sure that all the rows below are clear
+                int nextRight = mItemRights[i];
+                if (nextRight > potentialNextRight) {
+                    ret = false;
+                    break;
+                }
+            }
+        }
+        return ret;
+    }
+
+    private int rowSpanForHeight(int childHeight) {
+        return childHeight / mRowHeight + 1;
+    }
+
     private int rowIndexForTop(int childTop) {
         return childTop / mRowHeight;
     }
 
-    private void updateRights(int childTop, int childRight) {
+    private void updateRights(int childTop, int childRight, int childHeight) {
         int index = rowIndexForTop(childTop);
-        mItemRights[index] = childRight;
+        int rowSpan = rowSpanForHeight(childHeight);
+        int endIndex = Math.min(index + rowSpan, mItemRights.length);
+        for (int i = index; i < endIndex; i++) {
+            mItemRights[i] = childRight;
+        }
     }
 
     private int getNextTop(int currentTop, int childBottom, int minTop, int maxTop) {
