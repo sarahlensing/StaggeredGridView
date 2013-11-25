@@ -112,7 +112,7 @@ public class StaggeredGridView extends ViewGroup {
     private String mOrientation = STAGGERED_GRID_ORIENTATION_VERTICAL;
 
     private int mItemMargin;
-    private int mNumberPagesToPreload = 1;
+    private int mNumberPagesToPreload = 3;
 
     private SparseArrayCompat<GridItem> mVisibleItems = new SparseArrayCompat<GridItem>();
     private SparseArrayCompat<GridItem> mGridItems = new SparseArrayCompat<GridItem>();
@@ -163,9 +163,6 @@ public class StaggeredGridView extends ViewGroup {
 
     private final EdgeEffectCompat mBeginningEdge;
     private final EdgeEffectCompat mEndingEdge;
-    
-//    private ArrayList<ArrayList<Integer>> mColMappings = new ArrayList<ArrayList<Integer>>();
-//    private ArrayList<ArrayList<Integer>> mRowMappings= new ArrayList<ArrayList<Integer>>();
 
     private Runnable mPendingCheckForTap;
     
@@ -546,7 +543,17 @@ public class StaggeredGridView extends ViewGroup {
             mPopulating = true;
 
 //TODO:
-            overhang = 0;
+
+            int lowestView = 0;
+            for (int i = 0; i < mVisibleItems.size(); i++) {
+                GridItem gridItem = mVisibleItems.get(i);
+                if (gridItem.rect.right > lowestView) {
+                    lowestView = gridItem.rect.right;
+                }
+            }
+            overhang = lowestView - getEndingRight();
+
+            boolean towardsBeginning = (delta > 0);
 //            if (deltaY > 0) {
 //                if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
 //                    overhang = fillUp(mFirstPosition - 1, allowOverhang)+ mItemMargin;
@@ -567,12 +574,8 @@ public class StaggeredGridView extends ViewGroup {
 //                left = false;
 //            }
             movedBy = Math.min(overhang, allowOverhang);
-//            if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-//                offsetChildren(up ? movedBy : -movedBy);
-//            }
-//            else {
-//                offsetChildren(left ? movedBy : -movedBy);
-//            }
+            offsetChildren(towardsBeginning ? movedBy : -movedBy);
+
             recycleOffscreenViews();
             mPopulating = false;
             overScrolledBy = allowOverhang - overhang;
@@ -619,44 +622,11 @@ public class StaggeredGridView extends ViewGroup {
 
     private final boolean contentFits() {
         if (vertical()) {
-            return mContentSize.height > getHeight();
+            return mContentSize.height <= getHeight();
         }
         else {
-            return mContentSize.width > getWidth();
+            return mContentSize.width <= getWidth();
         }
-
-//        if (mFirstPosition != 0 || getChildCount() != mItemCount) {
-//            return false;
-//        }
-//
-//        if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-//            int topmost = Integer.MAX_VALUE;
-//            int bottommost = Integer.MIN_VALUE;
-//            for (int i = 0; i < mColCount; i++) {
-//                if (mItemTops[i] < topmost) {
-//                    topmost = mItemTops[i];
-//                }
-//                if (mItemBottoms[i] > bottommost) {
-//                    bottommost = mItemBottoms[i];
-//                }
-//            }
-//
-//            return topmost >= getPaddingTop() && bottommost <= getHeight() - getPaddingBottom();
-//        }
-//        else {
-//            int leftmost = Integer.MAX_VALUE;
-//            int rightmost = Integer.MIN_VALUE;
-//            for (int i = 0; i < mRowCount; i++) {
-//                if (mItemLefts[i] < leftmost) {
-//                    leftmost = mItemLefts[i];
-//                }
-//                if (mItemRights[i] > rightmost) {
-//                    rightmost = mItemRights[i];
-//                }
-//            }
-//
-//            return leftmost >= getPaddingLeft() && rightmost <= getWidth() - getPaddingRight();
-//        }
     }
 
     private void recycleAllViews() {
@@ -1016,6 +986,7 @@ public class StaggeredGridView extends ViewGroup {
         if (mPosRects.size() == 0) { //we have space because its the first item we are laying out
             return ret;
         }
+        boolean hadClearedSpaceBefore = false; //because we need consecutive space
         while (clearedSpace < itemSpace && index < mPosRects.size()) {
             Rect rect = mPosRects.get(index);
             int rectTop = rect.top;
@@ -1025,9 +996,10 @@ public class StaggeredGridView extends ViewGroup {
                     int rectHeight = rect.bottom - rectTop;
                     int rectTotalHeight = rectHeight + mItemMargin;
                     clearedSpace+= rectTotalHeight;
+                    hadClearedSpaceBefore = true;
                 }
-                else {
-                    break;
+                else if (hadClearedSpaceBefore){
+                    clearedSpace = 0;
                 }
             }
             index++;
@@ -1035,19 +1007,6 @@ public class StaggeredGridView extends ViewGroup {
         ret = clearedSpace >= itemSpace;
         return ret;
     }
-
-    //            if (rectTop <= nextTop) {
-//                if (rectRight < nextLeft) {
-//                    potentialNextLeft = rectRight;
-//
-//                    int rectHeight = rect.bottom - rectTop;
-//                    int rectTotalHeight = rectHeight + mItemMargin;
-//                    clearedSpace+= rectTotalHeight;
-//                }
-//                else {
-//                    return getNextPoint(rectRight, nextTop, itemSpace, fallbackIndex);
-//                }
-//            }
 
     private int getStartingIndex(int minValue) { //give value that is greater than minValue
         int ret = 0;
@@ -1120,77 +1079,6 @@ public class StaggeredGridView extends ViewGroup {
         return ret;
     }
 
-//    private Point getNextPoint(int nextLeft, int nextTop, int itemSpace, int posIndex, int startingIndex, int minValue) {
-//        Point ret;
-//
-//        int fallbackIndex = posIndex;
-//        int clearedSpace = 0;
-//
-//        int index = startingIndex;
-//        int originalMin = getOriginalMin(startingIndex);
-//
-//        int potentialNextLeft = nextLeft;
-//        int potentialNextTop = nextTop;
-//        Rect lastRect = null;
-//
-//        while (clearedSpace < itemSpace && index < mPosRects.size()) {
-//            Rect rect = mPosRects.get(index);
-//            lastRect = rect;
-//
-//            int rectTop = rect.top;
-//            int rectRight = rect.right;
-//
-//            if (potentialNextTop >= rectTop) {
-//                if (potentialNextLeft > rectRight ) {
-//                    int rectBottom = rect.bottom;
-//                    if (rectBottom <= getEndingBottom()) {
-//                        int rectHeight = rectBottom - rectTop;
-//                        int rectTotalHeight = rectHeight + mItemMargin;
-//                        clearedSpace+= rectTotalHeight;
-//                    }
-//                    else {
-//                        break; //has to be consecutive space so we break
-//                    }
-//                }
-//            }
-//            index++;
-//        }
-//        if (clearedSpace >= itemSpace) {
-//            ret = new Point(potentialNextLeft, potentialNextTop);
-//        }
-//        else {
-//            //there is space below where we are and only a few items in grid
-//            if (getEndingBottom() - potentialNextTop > itemSpace) {
-//                if (lastRect.bottom >= getEndingBottom()) {
-//                    ret = new Point(potentialNextLeft, lastRect.bottom);
-//                }
-//                else {
-//                    if (fallbackIndex < mPosRects.size()) {
-//                        int nextIndex = getStartingIndex(originalMin);
-//                        Rect rect = mPosRects.get(nextIndex);
-//                        return getNextPoint(rect.right, rect.top, itemSpace, fallbackIndex+1, nextIndex, originalMin);
-//                    }
-//                    else {
-//                        Log.d("VIEW TOO BIG", "VIEW TOO BIG");
-//                        ret = new Point(nextLeft, nextTop);
-//                    }
-//                }
-//            }
-//            else { //we reached the end of the grid so move to next top
-//                if (fallbackIndex < mPosRects.size()) {
-//                    int nextIndex = getStartingIndex(originalMin);
-//                    Rect rect = mPosRects.get(nextIndex);
-//                    return getNextPoint(rect.right, getBeginningTop(), itemSpace, fallbackIndex+1, nextIndex, originalMin);
-//                }
-//                else {
-//                    Log.d("VIEW TOO BIG", "VIEW TOO BIG");
-//                    ret = new Point(nextLeft, nextTop);
-//                }
-//            }
-//        }
-//        return ret;
-//    }
-
     private int getBeginningTop() {
         return getPaddingTop();
     }
@@ -1242,8 +1130,26 @@ public class StaggeredGridView extends ViewGroup {
         return index;
     }
 
+    private void trimAnyPosRectOverlap() {
+        if (mPosRects.size() < 2) {
+            return; //no work to be done
+        }
+        for (int i = 0; i < mPosRects.size()-1; i++) {
+            Rect r1 = mPosRects.get(i);
+            Rect r2 = mPosRects.get(i+1);
+            if (r2.top < r1.bottom) { //need to trim
+                //trim
+                Rect updated = new Rect(r2.left,r1.bottom + mItemMargin, r2.right, r2.bottom);
+                mPosRects.remove(i+1);
+                mPosRects.add(i+1, updated);
+            }
+        }
+    }
+
     private void updatePosRects(Rect rect) {
         int addIndex;
+
+        //1) remove irrelevant rects
 
         //remove rects that rect will render irrelevant in next views position calculations
         ArrayList<Rect> irrelevantRects = calculateIrrelevantRects(rect);
@@ -1255,10 +1161,14 @@ public class StaggeredGridView extends ViewGroup {
             //start here!! this isnt a good assumption. need to check where it should be added!!! ie case of what appesn when have big rect and then small rect
             addIndex = nextAddIndexForRect(rect);
         }
-        Log.d("IRRELEVANT RECT SIZE",String.valueOf(mPosRects.size()));
+
+        // 2) add this rect
 
         //add rect so can be used in future position calculations
         mPosRects.add(addIndex, rect);
+
+        // 3) modify rects so that there is no overlap (ie. in case that one element takes whole height and then another takes half, modify whole element's top for future calculations
+        trimAnyPosRectOverlap();
     }
 
     private ItemSize getDefaultContentSize(Rect rect) {
@@ -1302,15 +1212,6 @@ public class StaggeredGridView extends ViewGroup {
         int itemWidth = size.width;
         int itemHeight = size.height;
 
-        //ensure space available for this child
-        //nextRight and nextTop dont necc know about available space below themselves
-//        if (!ensureAvailableSpace(nextLeft, nextTop, itemHeight)) {
-//            //get nextRight and nextTop with available height
-//            Point point = getNextPoint(itemHeight);
-////            Point point = getNextPoint(nextLeft, nextTop, itemHeight, 0, ,Integer.MIN_VALUE);
-//            nextLeft = point.x;
-//            nextTop = point.y;
-//        }
         Point point = getNextPoint(itemHeight);
         int nextLeft = point.x;
         int nextTop = point.y;
@@ -1333,9 +1234,6 @@ public class StaggeredGridView extends ViewGroup {
         int start = 0;
         int end = mAdapter.getCount();
 
-//        int nextTop = getBeginningTop();
-//        int nextLeft = getBeginningLeft();
-
         for (int i = start; i < end; i++) {
             GridItem item = new GridItem();
             item.id = mAdapter.getItemId(i);
@@ -1343,13 +1241,6 @@ public class StaggeredGridView extends ViewGroup {
             ItemSize size = mAdapter.getItemSize(i);
             item.rect = calculateNextItemRect(size);
             mGridItems.append(i,item);
-
-//            nextTop = item.rect.bottom;
-//            if (nextTop >= getEndingBottom()) {
-//                nextTop = getBeginningTop();
-//                Rect rect = mPosRects.get(0);
-//                nextLeft = rect.right;
-//            }
         }
     }
 
@@ -1379,6 +1270,7 @@ public class StaggeredGridView extends ViewGroup {
             lp = this.generateDefaultLayoutParams();
             child.setLayoutParams(lp);
         }
+        child.setTag(R.string.GRID_ITEM_TAG, item);
         if (child.getParent() != this) {
             if (mInLayout) {
                 addViewInLayout(child, -1, lp);
@@ -1393,6 +1285,7 @@ public class StaggeredGridView extends ViewGroup {
         View child = getViewForGridItem(item);
         child.measure(item.rect.width(),item.rect.height());
         child.layout(item.rect.left, item.rect.top, item.rect.right, item.rect.bottom);
+        mVisibleItems.append(item.position, item);
     }
 
     private void layoutGridItems(int start, int end) {
