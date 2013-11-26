@@ -120,7 +120,6 @@ public class StaggeredGridView extends ViewGroup {
     private boolean mFastChildLayout;
     private boolean mPopulating;
     private boolean mInLayout;
-    private int[] mRestoreOffsets;
 
     private final RecycleBin mRecycler = new RecycleBin();
 
@@ -142,8 +141,6 @@ public class StaggeredGridView extends ViewGroup {
     private float mTouchRemainderX;
     private int mActivePointerId;
     private int mMotionPosition;
-    private int mColWidth;
-    private int mRowHeight;
     private long mFirstAdapterId;
     private boolean mBeginClick;
     
@@ -318,7 +315,7 @@ public class StaggeredGridView extends ViewGroup {
         switch (action) {
             case MotionEvent.ACTION_DOWN:
                 mVelocityTracker.clear();
-                mScroller.abortAnimation();
+                abortScrollerAnimation();
                 mLastTouchY = ev.getY();
                 mLastTouchX = ev.getX();
                 mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
@@ -355,7 +352,6 @@ public class StaggeredGridView extends ViewGroup {
                     final float dx = x - mLastTouchX + mTouchRemainderX;
                     final int deltaX = (int) dx;
                     mTouchRemainderX = dx - deltaX;
-
                     if (Math.abs(dx) > mTouchSlop) {
                         mTouchMode = TOUCH_MODE_DRAGGING;
                         return true;
@@ -387,7 +383,8 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
-    private void calculateDeltaScrollAndTrackMotion(MotionEvent ev, int pointerIndex) {
+    private int calculateDeltaScroll(MotionEvent ev, int pointerIndex) {
+        int ret;
         if (vertical()) {
             final float y = MotionEventCompat.getY(ev, pointerIndex);
             final float dy = y - mLastTouchY + mTouchRemainderY;
@@ -396,6 +393,11 @@ public class StaggeredGridView extends ViewGroup {
 
             if (Math.abs(dy) > mTouchSlop) {
                 mTouchMode = TOUCH_MODE_DRAGGING;
+            }
+            ret = deltaY;
+
+            if (mTouchMode == TOUCH_MODE_DRAGGING) {
+                mLastTouchX = y;
             }
         }
         else {
@@ -408,25 +410,26 @@ public class StaggeredGridView extends ViewGroup {
             if (Math.abs(dx) > mTouchSlop) {
                 mTouchMode = TOUCH_MODE_DRAGGING;
             }
+            ret = deltaX;
 
             if (mTouchMode == TOUCH_MODE_DRAGGING) {
                 mLastTouchX = x;
-
-                if (!trackMotionScroll(deltaX, true)) {
-                    // Break fling velocity if we impacted an edge.
-                    mVelocityTracker.clear();
-                }
             }
         }
+        return ret;
+    }
+
+    private void doScroll(int delta) {
+        offsetChildren(delta);
     }
 
     private void doScrollFling() {
         mVelocityTracker.computeCurrentVelocity(1000, mMaximumVelocity);
-        if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
+        if (vertical()) {
             final float velocityY = VelocityTrackerCompat.getYVelocity(mVelocityTracker, mActivePointerId);
             if (Math.abs(velocityY) > mFlingVelocity) { // TODO
                 mTouchMode = TOUCH_MODE_FLINGING;
-                mScroller.fling(0, 0, 0, (int) velocityY, 0, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
+                mScroller.fling(0, 0, 0, (int) -velocityY, 0, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
                 mLastTouchY = 0;
                 mLastTouchX = 0;
                 invalidate();
@@ -448,18 +451,22 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
+    private void abortScrollerAnimation() {
+        mScroller.abortAnimation();
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
         mVelocityTracker.addMovement(ev);
         final int action = ev.getAction() & MotionEventCompat.ACTION_MASK;
         
         int motionPosition = pointToPosition((int) ev.getX(), (int) ev.getY());
-        
+
         switch (action) {
             case MotionEvent.ACTION_DOWN:
             	
                 mVelocityTracker.clear();
-                mScroller.abortAnimation();
+                abortScrollerAnimation();
                 mLastTouchY = ev.getY();
                 mLastTouchX = ev.getX();
                 motionPosition = pointToPosition((int) mLastTouchX, (int) mLastTouchY);
@@ -484,8 +491,6 @@ public class StaggeredGridView extends ViewGroup {
                 break;
 
             case MotionEvent.ACTION_MOVE: {
-            	
-            	
                 final int index = MotionEventCompat.findPointerIndex(ev, mActivePointerId);
                 if (index < 0) {
                     Log.e(TAG, "onInterceptTouchEvent could not find pointer with id " +
@@ -493,15 +498,12 @@ public class StaggeredGridView extends ViewGroup {
                             "event stream?");
                     return false;
                 }
-
-                calculateDeltaScrollAndTrackMotion(ev, index);
-                
-//                updateSelectorState();
+                int delta = calculateDeltaScroll(ev, index);
+                doScroll(delta);
             } break;
 
             case MotionEvent.ACTION_CANCEL:
                 mTouchMode = TOUCH_MODE_IDLE;
-//                updateSelectorState();
                 setPressed(false);
 
                 final Handler handler = getHandler();
@@ -516,13 +518,52 @@ public class StaggeredGridView extends ViewGroup {
 
             case MotionEvent.ACTION_UP: {
                 doScrollFling();
-
                 mBeginClick = false;
-                
-//                updateSelectorState();
             } break;
         }
         return true;
+    }
+
+    private int getCurrentOffset() {
+        Rect viewportRect = new Rect(0, 0, getWidth(), getHeight());
+        for (int i = 0; i < mVisibleItems.size(); i++) {
+            GridItem item = mVisibleItems.get(i);
+            View itemView = item.view;
+            if (itemView != null) {
+                Rect itemRect = new Rect(itemView.getLeft(), itemView.getTop(), itemView.getRight(), itemView.getBottom());
+                if (itemRect.intersect(viewportRect)) {
+                    //itemRect will now be a rect of the intersection if they intersect
+                    int unadjustedOffset;
+                    int adjustedIntersection;
+                    if (vertical()) {
+                        unadjustedOffset = item.rect.top;
+                        adjustedIntersection = item.rect.height() - itemRect.height();
+                        if (adjustedIntersection == 0) {
+                            adjustedIntersection = -itemRect.top;
+                        }
+                    }
+                    else {
+                        unadjustedOffset = item.rect.left;
+                        adjustedIntersection = item.rect.width() - itemRect.width();
+                        if (adjustedIntersection == 0) {
+                            adjustedIntersection = -itemRect.left;
+                        }
+                    }
+                    int currOffset = unadjustedOffset + adjustedIntersection;
+                    return currOffset;
+                }
+                else if (viewportRect.contains(itemRect)) {
+                    if (vertical()) {
+                        return item.rect.top - getBeginningTop();
+                    }
+                    else {
+                        return item.rect.left - getBeginningLeft();
+                    }
+                }
+            }
+        }
+        Log.d("INVALID", "INVALID");
+        return -1;
     }
 
     /**
@@ -538,12 +579,9 @@ public class StaggeredGridView extends ViewGroup {
         final int movedBy;
         if (!contentFits) {
             final int overhang;
-            final boolean up;
-            final boolean left;
             mPopulating = true;
 
 //TODO:
-
             int lowestView = 0;
             for (int i = 0; i < mVisibleItems.size(); i++) {
                 GridItem gridItem = mVisibleItems.get(i);
@@ -574,7 +612,7 @@ public class StaggeredGridView extends ViewGroup {
 //                left = false;
 //            }
             movedBy = Math.min(overhang, allowOverhang);
-            offsetChildren(towardsBeginning ? movedBy : -movedBy);
+            offsetChildren(towardsBeginning?movedBy:-movedBy);
 
             recycleOffscreenViews();
             mPopulating = false;
@@ -621,6 +659,9 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     private final boolean contentFits() {
+        if (mContentSize == null) {
+            return true;
+        }
         if (vertical()) {
             return mContentSize.height <= getHeight();
         }
@@ -798,9 +839,11 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
+    @Override
     public void computeScroll() {
         if (mScroller.computeScrollOffset()) {
-            if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
+
+            if (vertical()) {
                 final int y = mScroller.getCurrY();
                 final int dy = (int) (y - mLastTouchY);
                 mLastTouchY = y;
@@ -815,7 +858,7 @@ public class StaggeredGridView extends ViewGroup {
                             absorbEdges(dy);
                             postInvalidate();
                         }
-                        mScroller.abortAnimation();
+                        abortScrollerAnimation();
                     }
                     mTouchMode = TOUCH_MODE_IDLE;
                 }
@@ -835,7 +878,7 @@ public class StaggeredGridView extends ViewGroup {
                             absorbEdges(dx);
                             postInvalidate();
                         }
-                        mScroller.abortAnimation();
+                        abortScrollerAnimation();
                     }
                     mTouchMode = TOUCH_MODE_IDLE;
                 }
@@ -1285,6 +1328,7 @@ public class StaggeredGridView extends ViewGroup {
         View child = getViewForGridItem(item);
         child.measure(item.rect.width(),item.rect.height());
         child.layout(item.rect.left, item.rect.top, item.rect.right, item.rect.bottom);
+        item.view = child;
         mVisibleItems.append(item.position, item);
     }
 
@@ -1299,24 +1343,50 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
+    private int getMinAllowedOffset() {
+        return 0;
+    }
 
-    final void offsetChildren(int offset) {
-        final int childCount = getChildCount();
-        for (int i = 0; i < childCount; i++) {
-            final View child = getChildAt(i);
-            if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-                child.layout(child.getLeft(), child.getTop() + offset,
-                        child.getRight(), child.getBottom() + offset);
-            }
-            else {
-                child.layout(child.getLeft() + offset, child.getTop(),
-                        child.getRight() + offset, child.getBottom());
-            }
-
+    private int getMaxAllowedOffset() {
+        if (vertical()) {
+            return mContentSize.height - getHeight();
+        }
+        else {
+            return mContentSize.width - getWidth();
         }
     }
 
+    final void offsetChildren(int offset) {
+        int currOffset = getCurrentOffset();
+        int nextPredictedOffset = currOffset - offset;
+        if (nextPredictedOffset < getMinAllowedOffset()) {
+            offset = currOffset;
+        }
+        else if (nextPredictedOffset > getMaxAllowedOffset()) {
+            offset = currOffset - getMaxAllowedOffset();
+        }
 
+        if (offset != 0) {
+            final int childCount = getChildCount();
+            for (int i = 0; i < childCount; i++) {
+                final View child = getChildAt(i);
+                offsetChild(child, offset);
+            }
+        }
+    }
+
+    final void offsetChild(View child, int offset) {
+        if (vertical()) {
+            int nextTop = child.getTop() + offset;
+            int nextBottom = child.getBottom() + offset;
+            child.layout(child.getLeft(), nextTop, child.getRight(), nextBottom);
+        }
+        else {
+            int nextLeft = child.getLeft() + offset;
+            int nextRight = child.getRight() + offset;
+            child.layout(nextLeft, child.getTop(), nextRight, child.getBottom());
+        }
+    }
 
 
 
