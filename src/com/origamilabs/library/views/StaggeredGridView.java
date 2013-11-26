@@ -1107,7 +1107,7 @@ public class StaggeredGridView extends ViewGroup {
             Rect lastPosRect = mPosRects.get(mPosRects.size()-1);
             //not a lot of pos rects yet so just get next space below
             if (getEndingBottom() - lastPosRect.bottom >= itemSpace) {
-                return new Point(getBeginningLeft(), lastPosRect.bottom);
+                return new Point(getBeginningLeft(), lastPosRect.bottom + mItemMargin);
             }
             else {
                 for (Rect rect : sortedRects()) {
@@ -1123,19 +1123,19 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     private int getBeginningTop() {
-        return getPaddingTop();
+        return getPaddingTop() + mItemMargin;
     }
 
     private int getBeginningLeft() {
-        return getPaddingLeft();
+        return getPaddingLeft() + mItemMargin;
     }
 
     private int getEndingRight() {
-        return getWidth() - getPaddingRight();
+        return getWidth() - getPaddingRight() - mItemMargin;
     }
 
     private int getEndingBottom() {
-        return getHeight() - getPaddingBottom();
+        return getHeight() - getPaddingBottom() - mItemMargin;
     }
 
     private ArrayList<Rect> calculateIrrelevantRects(Rect rect) {
@@ -1259,9 +1259,9 @@ public class StaggeredGridView extends ViewGroup {
         int nextLeft = point.x;
         int nextTop = point.y;
 
-        int itemLeft = nextLeft ; //+ ((nextTop == getBeginningLeft())?0:mItemMargin);
+        int itemLeft = nextLeft;
         int itemRight = itemLeft + itemWidth;
-        final int itemTop = nextTop ;//+ ((nextTop == getBeginningTop())?0:mItemMargin);
+        final int itemTop = nextTop;
         final int itemBottom = itemTop + itemHeight;
 
         Rect ret = new Rect(itemLeft, itemTop, itemRight, itemBottom);
@@ -1349,10 +1349,10 @@ public class StaggeredGridView extends ViewGroup {
 
     private int getMaxAllowedOffset() {
         if (vertical()) {
-            return mContentSize.height - getHeight();
+            return mContentSize.height - getHeight() + mItemMargin;
         }
         else {
-            return mContentSize.width - getWidth();
+            return mContentSize.width - getWidth() + mItemMargin;
         }
     }
 
