@@ -112,7 +112,7 @@ public class StaggeredGridView extends ViewGroup {
     private String mOrientation = STAGGERED_GRID_ORIENTATION_VERTICAL;
 
     private int mItemMargin;
-    private int mNumberPagesToPreload = 3;
+    private int mNumberPagesToPreload = 10;
 
     private SparseArrayCompat<GridItem> mVisibleItems = new SparseArrayCompat<GridItem>();
     private SparseArrayCompat<GridItem> mGridItems = new SparseArrayCompat<GridItem>();
@@ -143,17 +143,17 @@ public class StaggeredGridView extends ViewGroup {
     private int mMotionPosition;
     private long mFirstAdapterId;
     private boolean mBeginClick;
-    
+
     private static final int TOUCH_MODE_IDLE = 0;
     private static final int TOUCH_MODE_DRAGGING = 1;
     private static final int TOUCH_MODE_FLINGING = 2;
-	private static final int TOUCH_MODE_DOWN = 3;
-	private static final int TOUCH_MODE_TAP = 4;
-	private static final int TOUCH_MODE_DONE_WAITING = 5;
-	private static final int TOUCH_MODE_REST = 6;
-	
-	private static final int INVALID_POSITION = -1;
-	
+    private static final int TOUCH_MODE_DOWN = 3;
+    private static final int TOUCH_MODE_TAP = 4;
+    private static final int TOUCH_MODE_DONE_WAITING = 5;
+    private static final int TOUCH_MODE_REST = 6;
+
+    private static final int INVALID_POSITION = -1;
+
     private int mTouchMode;
     private final VelocityTracker mVelocityTracker = VelocityTracker.obtain();
     private final ScrollerCompat mScroller;
@@ -162,21 +162,21 @@ public class StaggeredGridView extends ViewGroup {
     private final EdgeEffectCompat mEndingEdge;
 
     private Runnable mPendingCheckForTap;
-    
+
     private ContextMenuInfo mContextMenuInfo = null;
-    
+
     /**
      * The drawable used to draw the selector
      */
     Drawable mSelector;
-    
+
     boolean mDrawSelectorOnTop = false;
-    
+
     /**
      * Delayed action for touch mode.
      */
     private Runnable mTouchModeReset;
-    
+
     /**
      * The selection's left padding
      */
@@ -196,22 +196,22 @@ public class StaggeredGridView extends ViewGroup {
      * The selection's bottom padding
      */
     int mSelectionBottomPadding = 0;
-    
+
     /**
      * The select child's view (from the adapter's getView) is enabled.
      */
     private boolean mIsChildViewEnabled;
-    
+
     /**
      * Defines the selector's location and dimension at drawing time
      */
     Rect mSelectorRect = new Rect();
-    
+
     /**
      * The current position of the selector in the list.
      */
     int mSelectorPosition = INVALID_POSITION;
-    
+
     /**
      * The listener that receives notifications when an item is clicked.
      */
@@ -221,22 +221,22 @@ public class StaggeredGridView extends ViewGroup {
      * The listener that receives notifications when an item is long clicked.
      */
     OnItemLongClickListener mOnItemLongClickListener;
-    
+
     /**
      * The last CheckForLongPress runnable we posted, if any
      */
     private CheckForLongPress mPendingCheckForLongPress;
-    
+
     /**
      * Acts upon click
      */
     private PerformClick mPerformClick;
-    
+
     /**
      * Rectangle used for hit testing children
      */
     private Rect mTouchFrame;
-    
+
     private static final class GridItem {
         public long id = -1;
         public int position = -1;
@@ -260,16 +260,16 @@ public class StaggeredGridView extends ViewGroup {
 
     public StaggeredGridView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        
+
         if(attrs!=null){
-        	TypedArray a=getContext().obtainStyledAttributes( attrs, R.styleable.StaggeredGridView);
+            TypedArray a=getContext().obtainStyledAttributes( attrs, R.styleable.StaggeredGridView);
             mOrientation = a.getString(R.styleable.StaggeredGridView_gridOrientation);
             mDrawSelectorOnTop = a.getBoolean(R.styleable.StaggeredGridView_drawSelectorOnTop, false);
         }else{
             mOrientation = STAGGERED_GRID_ORIENTATION_VERTICAL;
-        	mDrawSelectorOnTop = false;
+            mDrawSelectorOnTop = false;
         }
-        
+
         final ViewConfiguration vc = ViewConfiguration.get(context);
         mTouchSlop = vc.getScaledTouchSlop();
         mMaximumVelocity = vc.getScaledMaximumFlingVelocity();
@@ -282,7 +282,7 @@ public class StaggeredGridView extends ViewGroup {
         setWillNotDraw(false);
         setClipToPadding(false);
         this.setFocusableInTouchMode(false);
-        
+
         if (mSelector == null) {
             useDefaultSelector();
         }
@@ -397,7 +397,7 @@ public class StaggeredGridView extends ViewGroup {
             ret = deltaY;
 
             if (mTouchMode == TOUCH_MODE_DRAGGING) {
-                mLastTouchX = y;
+                mLastTouchY = y;
             }
         }
         else {
@@ -429,7 +429,7 @@ public class StaggeredGridView extends ViewGroup {
             final float velocityY = VelocityTrackerCompat.getYVelocity(mVelocityTracker, mActivePointerId);
             if (Math.abs(velocityY) > mFlingVelocity) { // TODO
                 mTouchMode = TOUCH_MODE_FLINGING;
-                mScroller.fling(0, 0, 0, (int) -velocityY, 0, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
+                mScroller.fling(0, 0, 0, (int) velocityY, 0, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
                 mLastTouchY = 0;
                 mLastTouchX = 0;
                 invalidate();
@@ -459,12 +459,12 @@ public class StaggeredGridView extends ViewGroup {
     public boolean onTouchEvent(MotionEvent ev) {
         mVelocityTracker.addMovement(ev);
         final int action = ev.getAction() & MotionEventCompat.ACTION_MASK;
-        
+
         int motionPosition = pointToPosition((int) ev.getX(), (int) ev.getY());
 
         switch (action) {
             case MotionEvent.ACTION_DOWN:
-            	
+
                 mVelocityTracker.clear();
                 abortScrollerAnimation();
                 mLastTouchY = ev.getY();
@@ -473,19 +473,19 @@ public class StaggeredGridView extends ViewGroup {
                 mActivePointerId = MotionEventCompat.getPointerId(ev, 0);
                 mTouchRemainderY = 0;
                 mTouchRemainderX = 0;
-                
+
                 if(mTouchMode != TOUCH_MODE_FLINGING && !mDataChanged && motionPosition >= 0 && getAdapter().isEnabled(motionPosition)){
-                	mTouchMode = TOUCH_MODE_DOWN;
-                	
-                	mBeginClick = true;
-                	
-                	if (mPendingCheckForTap == null) {
-                    	mPendingCheckForTap = new CheckForTap();
+                    mTouchMode = TOUCH_MODE_DOWN;
+
+                    mBeginClick = true;
+
+                    if (mPendingCheckForTap == null) {
+                        mPendingCheckForTap = new CheckForTap();
                     }
-                    
+
                     postDelayed(mPendingCheckForTap, ViewConfiguration.getTapTimeout());
                 }
-                
+
                 mMotionPosition = motionPosition;
                 invalidate();
                 break;
@@ -512,7 +512,7 @@ public class StaggeredGridView extends ViewGroup {
                 }
 
                 releaseEdges();
-                
+
                 mTouchMode = TOUCH_MODE_IDLE;
                 break;
 
@@ -566,6 +566,32 @@ public class StaggeredGridView extends ViewGroup {
         return -1;
     }
 
+    private boolean isLower(GridItem gridItem, int lowest) {
+        if (vertical()) {
+            return gridItem.rect.bottom > lowest;
+        }
+        else {
+            return gridItem.rect.right > lowest;
+        }
+    }
+
+    private int getOverhang() {
+        int lowest = 0;
+        for (int i = 0; i < mVisibleItems.size(); i++) {
+            GridItem gridItem = mVisibleItems.get(i);
+            if (isLower(gridItem, lowest)) {
+                lowest = vertical()?gridItem.rect.bottom:gridItem.rect.right;
+            }
+        }
+
+        if (vertical()) {
+            return lowest - getEndingBottom();
+        }
+        else {
+            return lowest - getEndingRight();
+        }
+    }
+
     /**
      *
      * @param delta Pixels that content should move by
@@ -581,15 +607,7 @@ public class StaggeredGridView extends ViewGroup {
             final int overhang;
             mPopulating = true;
 
-//TODO:
-            int lowestView = 0;
-            for (int i = 0; i < mVisibleItems.size(); i++) {
-                GridItem gridItem = mVisibleItems.get(i);
-                if (gridItem.rect.right > lowestView) {
-                    lowestView = gridItem.rect.right;
-                }
-            }
-            overhang = lowestView - getEndingRight();
+            overhang = getOverhang();
 
             boolean towardsBeginning = (delta > 0);
 //            if (deltaY > 0) {
@@ -624,7 +642,7 @@ public class StaggeredGridView extends ViewGroup {
 
         if (allowOverScroll) {
             final int overScrollMode = ViewCompat.getOverScrollMode(this);
- 
+
             if (overScrollMode == ViewCompat.OVER_SCROLL_ALWAYS ||
                     (overScrollMode == ViewCompat.OVER_SCROLL_IF_CONTENT_SCROLLS && !contentFits)) {
                 if (overScrolledBy > 0) {
@@ -642,7 +660,7 @@ public class StaggeredGridView extends ViewGroup {
 //        } else {
 //            mSelectorRect.setEmpty();
 //        }
-        
+
         return delta == 0 || movedBy != 0;
     }
 
@@ -905,15 +923,15 @@ public class StaggeredGridView extends ViewGroup {
             drawSelector(canvas);
         }
     }
-    
+
     private void drawSelector(Canvas canvas) {
-    	if (!mSelectorRect.isEmpty() && mSelector != null && mBeginClick ) {
+        if (!mSelectorRect.isEmpty() && mSelector != null && mBeginClick ) {
             final Drawable selector = mSelector;
             selector.setBounds(mSelectorRect);
             selector.draw(canvas);
         }
     }
-    
+
     @Override
     public void draw(Canvas canvas) {
         super.draw(canvas);
@@ -967,8 +985,8 @@ public class StaggeredGridView extends ViewGroup {
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-    	
-    	int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+
+        int widthMode = MeasureSpec.getMode(widthMeasureSpec);
         int heightMode = MeasureSpec.getMode(heightMeasureSpec);
         int widthSize = MeasureSpec.getSize(widthMeasureSpec);
         int heightSize = MeasureSpec.getSize(heightMeasureSpec);
@@ -1010,7 +1028,7 @@ public class StaggeredGridView extends ViewGroup {
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
-    	mInLayout = true;
+        mInLayout = true;
         if (shouldLayout()) {
             prepareToBuildItems();
             buildGridItems();
@@ -1032,17 +1050,34 @@ public class StaggeredGridView extends ViewGroup {
         boolean hadClearedSpaceBefore = false; //because we need consecutive space
         while (clearedSpace < itemSpace && index < mPosRects.size()) {
             Rect rect = mPosRects.get(index);
-            int rectTop = rect.top;
-            if (rectTop >= nextTop) {
-                int rectRight = rect.right;
-                if (rectRight < nextLeft) {
-                    int rectHeight = rect.bottom - rectTop;
-                    int rectTotalHeight = rectHeight + mItemMargin;
-                    clearedSpace+= rectTotalHeight;
-                    hadClearedSpaceBefore = true;
+            if (vertical()) {
+                int rectLeft = rect.left;
+                if (rectLeft >= nextLeft) {
+                    int rectBottom = rect.bottom;
+                    if (rectBottom < nextTop) {
+                        int rectWidth = rect.right - rectLeft;
+                        int rectTotalWidth = rectWidth + mItemMargin;
+                        clearedSpace+= rectTotalWidth;
+                        hadClearedSpaceBefore = true;
+                    }
+                    else if (hadClearedSpaceBefore){
+                        clearedSpace = 0;
+                    }
                 }
-                else if (hadClearedSpaceBefore){
-                    clearedSpace = 0;
+            }
+            else {
+                int rectTop = rect.top;
+                if (rectTop >= nextTop) {
+                    int rectRight = rect.right;
+                    if (rectRight < nextLeft) {
+                        int rectHeight = rect.bottom - rectTop;
+                        int rectTotalHeight = rectHeight + mItemMargin;
+                        clearedSpace+= rectTotalHeight;
+                        hadClearedSpaceBefore = true;
+                    }
+                    else if (hadClearedSpaceBefore){
+                        clearedSpace = 0;
+                    }
                 }
             }
             index++;
@@ -1103,20 +1138,39 @@ public class StaggeredGridView extends ViewGroup {
             ret = new Point(getBeginningLeft(), getBeginningTop());
         }
         else {
-            ArrayList<Rect> sorted = sortedRects();
-            Rect lastPosRect = mPosRects.get(mPosRects.size()-1);
-            //not a lot of pos rects yet so just get next space below
-            if (getEndingBottom() - lastPosRect.bottom >= itemSpace) {
-                return new Point(getBeginningLeft(), lastPosRect.bottom + mItemMargin);
+            if (vertical()) {
+                ArrayList<Rect> sorted = sortedRects();
+                Rect lastPosRect = mPosRects.get(mPosRects.size()-1);
+                //not a lot of pos rects yet so just get next space to right
+                if (getEndingRight() - lastPosRect.right >= itemSpace) {
+                    return new Point(lastPosRect.right + mItemMargin, getBeginningTop());
+                }
+                else {
+                    for (Rect rect : sortedRects()) {
+                        if (ensureAvailableSpace(rect.left, rect.bottom + mItemMargin, itemSpace)) {
+                            return new Point(rect.left, rect.bottom + mItemMargin);
+                        }
+                    }
+                    Rect lastRect = sorted.get(sorted.size()-1);
+                    ret = new Point(getBeginningLeft(), lastRect.bottom + mItemMargin);
+                }
             }
             else {
-                for (Rect rect : sortedRects()) {
-                    if (ensureAvailableSpace(rect.right + mItemMargin, rect.top, itemSpace)) {
-                        return new Point(rect.right + mItemMargin, rect.top);
-                    }
+                ArrayList<Rect> sorted = sortedRects();
+                Rect lastPosRect = mPosRects.get(mPosRects.size()-1);
+                //not a lot of pos rects yet so just get next space below
+                if (getEndingBottom() - lastPosRect.bottom >= itemSpace) {
+                    return new Point(getBeginningLeft(), lastPosRect.bottom + mItemMargin);
                 }
-                Rect lastRect = sorted.get(sorted.size()-1);
-                ret = new Point(lastRect.right + mItemMargin, getBeginningTop());
+                else {
+                    for (Rect rect : sortedRects()) {
+                        if (ensureAvailableSpace(rect.right + mItemMargin, rect.top, itemSpace)) {
+                            return new Point(rect.right + mItemMargin, rect.top);
+                        }
+                    }
+                    Rect lastRect = sorted.get(sorted.size()-1);
+                    ret = new Point(lastRect.right + mItemMargin, getBeginningTop());
+                }
             }
         }
         return ret;
@@ -1138,22 +1192,47 @@ public class StaggeredGridView extends ViewGroup {
         return getHeight() - getPaddingBottom() - mItemMargin;
     }
 
+    private boolean isIrrelevant(int lastRectStart, int lastRectEnd, int rectStart, int rectEnd) {
+        return lastRectStart >= rectStart && lastRectEnd <= rectEnd;
+    }
+
+    private boolean noMoreIrrelevants(int lastRectStart, int rectEnd) {
+        return lastRectStart > rectEnd;
+    }
+
     private ArrayList<Rect> calculateIrrelevantRects(Rect rect) {
         ArrayList<Rect> ret = new ArrayList<Rect>();
         int index = 0;
-        int lastRectStart = 0;
-        int lastRectEnd = 0;
-        int rectStart = rect.top;
-        int rectEnd = rect.bottom;
+        int lastRectStart;
+        int lastRectEnd;
+        int rectStart;
+        int rectEnd;
+
+        if (vertical()) {
+            rectStart = rect.left;
+            rectEnd = rect.right;
+        }
+        else {
+            rectStart = rect.top;
+            rectEnd = rect.bottom;
+        }
 
         while (index < mPosRects.size()) {
             Rect potentialIrrelevant = mPosRects.get(index);
-            lastRectStart = potentialIrrelevant.top;
-            lastRectEnd = potentialIrrelevant.bottom;
-            if (lastRectStart >= rectStart && lastRectEnd <= rectEnd) {
+
+            if (vertical()) {
+                lastRectStart = potentialIrrelevant.left;
+                lastRectEnd = potentialIrrelevant.right;
+            }
+            else {
+                lastRectStart = potentialIrrelevant.top;
+                lastRectEnd = potentialIrrelevant.bottom;
+            }
+
+            if (isIrrelevant(lastRectStart, lastRectEnd, rectStart, rectEnd)) {
                 ret.add(potentialIrrelevant);
             }
-            else if (lastRectStart > rectEnd) { //there are no more irrelevants bc we have accounted for rect's height
+            else if (noMoreIrrelevants(lastRectStart, rectEnd)) { //there are no more irrelevants bc we have accounted for rect's height
                 break;
             }
             index++;
@@ -1161,16 +1240,43 @@ public class StaggeredGridView extends ViewGroup {
         return ret;
     }
 
+    private boolean shouldAddRectBefore(Rect rect, Rect r) {
+        if (vertical()) {
+            return rect.right <= r.right;
+        }
+        else {
+            return rect.bottom <= r.bottom;
+        }
+    }
+
     private int nextAddIndexForRect(Rect rect) {
         int index = mPosRects.size();
         for (int i = 0; i < mPosRects.size(); i++) {
             Rect r = mPosRects.get(i);
-            if (rect.bottom <= r.bottom) {
+            if (shouldAddRectBefore(rect, r)) {
                 index = i;
                 break;
             }
         }
         return index;
+    }
+
+    private boolean rectOverlapsRect(Rect r1, Rect r2) {
+        if (vertical()) {
+            return r2.left < r1.right;
+        }
+        else {
+            return r2.top < r1.bottom;
+        }
+    }
+
+    private Rect getTrimmedRect(Rect r1, Rect r2) {
+        if (vertical()) {
+            return new Rect(r1.right + mItemMargin, r2.top, r2.right, r2.bottom);
+        }
+        else {
+            return new Rect(r2.left,r1.bottom + mItemMargin, r2.right, r2.bottom);
+        }
     }
 
     private void trimAnyPosRectOverlap() {
@@ -1180,11 +1286,11 @@ public class StaggeredGridView extends ViewGroup {
         for (int i = 0; i < mPosRects.size()-1; i++) {
             Rect r1 = mPosRects.get(i);
             Rect r2 = mPosRects.get(i+1);
-            if (r2.top < r1.bottom) { //need to trim
+            if (rectOverlapsRect(r1, r2)) { //need to trim
                 //trim
-                Rect updated = new Rect(r2.left,r1.bottom + mItemMargin, r2.right, r2.bottom);
+                Rect trimmed = getTrimmedRect(r1, r2);
                 mPosRects.remove(i+1);
-                mPosRects.add(i+1, updated);
+                mPosRects.add(i+1, trimmed);
             }
         }
     }
@@ -1201,7 +1307,6 @@ public class StaggeredGridView extends ViewGroup {
             mPosRects.removeAll(irrelevantRects);
         }
         else {
-            //start here!! this isnt a good assumption. need to check where it should be added!!! ie case of what appesn when have big rect and then small rect
             addIndex = nextAddIndexForRect(rect);
         }
 
@@ -1358,6 +1463,7 @@ public class StaggeredGridView extends ViewGroup {
 
     final void offsetChildren(int offset) {
         int currOffset = getCurrentOffset();
+        Log.d("CURR OFFSET", String.valueOf(currOffset));
         int nextPredictedOffset = currOffset - offset;
         if (nextPredictedOffset < getMinAllowedOffset()) {
             offset = currOffset;
@@ -1403,10 +1509,10 @@ public class StaggeredGridView extends ViewGroup {
         if (view != null) {
             return view;
         }
-        
+
         if(position >= mAdapter.getCount()){
-        	view = null;
-        	return null;
+            view = null;
+            return null;
         }
 
         // Reuse optScrap if it's of the right type (and not null)
@@ -1453,7 +1559,7 @@ public class StaggeredGridView extends ViewGroup {
         clearAllState();
         mAdapter = adapter;
         mDataChanged = true;
-        
+
         if (adapter != null) {
             adapter.registerDataSetObserver(mObserver);
             mRecycler.setViewTypeCount(adapter.getViewTypeCount());
@@ -1477,7 +1583,7 @@ public class StaggeredGridView extends ViewGroup {
 
         // Clear recycler because there could be different view types now
         mRecycler.clear();
-        
+
         mSelectorRect.setEmpty();
         mSelectorPosition = INVALID_POSITION;
     }
@@ -1489,7 +1595,7 @@ public class StaggeredGridView extends ViewGroup {
 
     @Override
     protected LayoutParams generateLayoutParams(ViewGroup.LayoutParams lp) {
-    	return new LayoutParams(lp);
+        return new LayoutParams(lp);
     }
 
     @Override
@@ -1504,7 +1610,7 @@ public class StaggeredGridView extends ViewGroup {
 
     public static class LayoutParams extends ViewGroup.LayoutParams {
         private static final int[] LAYOUT_ATTRS = new int[] {
-            android.R.attr.layout_span
+                android.R.attr.layout_span
         };
 
         /**
@@ -1593,8 +1699,8 @@ public class StaggeredGridView extends ViewGroup {
             }
 
             @SuppressWarnings("unchecked")
-			ArrayList<View>[] scrapViews = new ArrayList[viewTypeCount];
-            
+            ArrayList<View>[] scrapViews = new ArrayList[viewTypeCount];
+
             for (int i = 0; i < viewTypeCount; i++) {
                 scrapViews[i] = new ArrayList<View>();
             }
@@ -1693,50 +1799,50 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     static class ColMap implements Parcelable {
-    	private ArrayList<Integer> values;
-    	int tempMap[];
-    	
-    	public ColMap(ArrayList<Integer> values){
-    		this.values = values;
-    	}
-    	
-    	private ColMap(Parcel in) {
-    		in.readIntArray(tempMap);
-    		values = new ArrayList<Integer>();
-    	    for (int index = 0; index < tempMap.length; index++) {
-    	    	values.add(tempMap[index]);
-    	    }
-    	}
-    	
-		@Override
-		public void writeToParcel(Parcel out, int flags) {
-			tempMap = toIntArray(values);
-			out.writeIntArray(tempMap);
-		}
-    	
-		public static final Creator<ColMap> CREATOR = new Creator<ColMap>() {
-			public ColMap createFromParcel(Parcel source) {
-				return new ColMap(source);
-			}
+        private ArrayList<Integer> values;
+        int tempMap[];
 
-			public ColMap[] newArray(int size) {
-				return new ColMap[size];
-			}
-		};
+        public ColMap(ArrayList<Integer> values){
+            this.values = values;
+        }
 
-		int[] toIntArray(ArrayList<Integer> list) {
-			int[] ret = new int[list.size()];
-			for (int i = 0; i < ret.length; i++)
-				ret[i] = list.get(i);
-			return ret;
-		}
+        private ColMap(Parcel in) {
+            in.readIntArray(tempMap);
+            values = new ArrayList<Integer>();
+            for (int index = 0; index < tempMap.length; index++) {
+                values.add(tempMap[index]);
+            }
+        }
 
-		@Override
-		public int describeContents() {
-			return 0;
-		}
+        @Override
+        public void writeToParcel(Parcel out, int flags) {
+            tempMap = toIntArray(values);
+            out.writeIntArray(tempMap);
+        }
+
+        public static final Creator<ColMap> CREATOR = new Creator<ColMap>() {
+            public ColMap createFromParcel(Parcel source) {
+                return new ColMap(source);
+            }
+
+            public ColMap[] newArray(int size) {
+                return new ColMap[size];
+            }
+        };
+
+        int[] toIntArray(ArrayList<Integer> list) {
+            int[] ret = new int[list.size()];
+            for (int i = 0; i < ret.length; i++)
+                ret[i] = list.get(i);
+            return ret;
+        }
+
+        @Override
+        public int describeContents() {
+            return 0;
+        }
     }
-    
+
     static class SavedState extends BaseSavedState {
         long firstId = -1;
         int position;
@@ -1753,7 +1859,7 @@ public class StaggeredGridView extends ViewGroup {
             position = in.readInt();
             in.readIntArray(topOffsets);
             in.readTypedList(mapping, ColMap.CREATOR);
-            
+
         }
 
         @Override
@@ -1768,9 +1874,9 @@ public class StaggeredGridView extends ViewGroup {
         @Override
         public String toString() {
             return "StaggereGridView.SavedState{"
-                        + Integer.toHexString(System.identityHashCode(this))
-                        + " firstId=" + firstId
-                        + " position=" + position + "}";
+                    + Integer.toHexString(System.identityHashCode(this))
+                    + " firstId=" + firstId
+                    + " position=" + position + "}";
         }
 
         public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {
@@ -1783,7 +1889,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         };
     }
-    
+
     /**
      * A base class for Runnables that will check that their view is still attached to
      * the original window as when the Runnable was created.
@@ -1800,13 +1906,13 @@ public class StaggeredGridView extends ViewGroup {
             return hasWindowFocus() && getWindowAttachCount() == mOriginalAttachCount;
         }
     }
-    
+
     private void useDefaultSelector() {
         setSelector(getResources().getDrawable(android.R.drawable.list_selector_background));
     }
-    
-    
-	void positionSelector(int position, View sel) {
+
+
+    void positionSelector(int position, View sel) {
         if (position != INVALID_POSITION) {
             mSelectorPosition = position;
         }
@@ -1816,7 +1922,7 @@ public class StaggeredGridView extends ViewGroup {
         if (sel instanceof SelectionBoundsAdjuster) {
             ((SelectionBoundsAdjuster)sel).adjustListItemSelectionBounds(selectorRect);
         }
-        
+
         positionSelector(selectorRect.left, selectorRect.top, selectorRect.right,
                 selectorRect.bottom);
 
@@ -1828,8 +1934,8 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
     }
-    
-	/**
+
+    /**
      * The top-level view of a list item can implement this interface to allow
      * itself to modify the bounds of the selection shown for that item.
      */
@@ -1844,12 +1950,12 @@ public class StaggeredGridView extends ViewGroup {
          */
         public void adjustListItemSelectionBounds(Rect bounds);
     }
-    
+
     private int getSelectedItemPosition(){
-    	// TODO: setup mNextSelectedPosition
-    	return this.mSelectorPosition;
+        // TODO: setup mNextSelectedPosition
+        return this.mSelectorPosition;
     }
-    
+
     @Override
     protected int[] onCreateDrawableState(int extraSpace) {
         // If the child view is enabled then do the default behavior.
@@ -1884,25 +1990,25 @@ public class StaggeredGridView extends ViewGroup {
         return state;
     }
 
-    
+
     private void positionSelector(int l, int t, int r, int b) {
         mSelectorRect.set(l - mSelectionLeftPadding, t - mSelectionTopPadding, r
                 + mSelectionRightPadding, b + mSelectionBottomPadding);
     }
-    
+
     final class CheckForTap implements Runnable {
         public void run() {
             if (mTouchMode == TOUCH_MODE_DOWN) {
-            	
+
                 mTouchMode = TOUCH_MODE_TAP;
 //                final View child = getChildAt(mMotionPosition - mFirstPosition);
                 final View child = getChildAt(mMotionPosition);
                 if (child != null && !child.hasFocusable()) {
-                    
+
                     if (!mDataChanged) {
-                    	child.setSelected(true);
-                    	child.setPressed(true);
-                        
+                        child.setSelected(true);
+                        child.setPressed(true);
+
                         setPressed(true);
                         //TODO:
 //                        layoutChildren(true);
@@ -1932,7 +2038,7 @@ public class StaggeredGridView extends ViewGroup {
                         } else {
                             mTouchMode = TOUCH_MODE_DONE_WAITING;
                         }
-                        
+
                         postInvalidate();
                     } else {
                         mTouchMode = TOUCH_MODE_DONE_WAITING;
@@ -1941,7 +2047,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
     }
-    
+
     private class CheckForLongPress extends WindowRunnnable implements Runnable {
         public void run() {
             final int motionPosition = mMotionPosition;
@@ -1965,7 +2071,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
     }
-    
+
     private class PerformClick extends WindowRunnnable implements Runnable {
         int mClickMotionPosition;
 
@@ -1989,7 +2095,7 @@ public class StaggeredGridView extends ViewGroup {
             }
         }
     }
-    
+
     public boolean performItemClick(View view, int position, long id) {
         if (mOnItemClickListener != null) {
             playSoundEffect(SoundEffectConstants.CLICK);
@@ -2002,11 +2108,11 @@ public class StaggeredGridView extends ViewGroup {
 
         return false;
     }
-    
+
     boolean performLongPress(final View child,
-            final int longPressPosition, final long longPressId) {
-    	
-    	// TODO : add check for multiple choice mode.. currently modes are yet to be supported
+                             final int longPressPosition, final long longPressId) {
+
+        // TODO : add check for multiple choice mode.. currently modes are yet to be supported
 
         boolean handled = false;
         if (mOnItemLongClickListener != null) {
@@ -2021,12 +2127,12 @@ public class StaggeredGridView extends ViewGroup {
         }
         return handled;
     }
-    
+
     @Override
     protected ContextMenuInfo getContextMenuInfo() {
         return mContextMenuInfo;
     }
-    
+
     /**
      * Creates the ContextMenuInfo returned from {@link #getContextMenuInfo()}. This
      * methods knows the view, position and ID of the item that received the
@@ -2041,7 +2147,7 @@ public class StaggeredGridView extends ViewGroup {
     ContextMenuInfo createContextMenuInfo(View view, int position, long id) {
         return new AdapterContextMenuInfo(view, position, id);
     }
-    
+
     /**
      * Extra menu information provided to the
      * {@link android.view.View.OnCreateContextMenuListener#onCreateContextMenu(ContextMenu, View, ContextMenuInfo) }
@@ -2073,7 +2179,7 @@ public class StaggeredGridView extends ViewGroup {
          */
         public long id;
     }
-    
+
     /**
      * Returns the selector {@link android.graphics.drawable.Drawable} that is used to draw the
      * selection in the list.
@@ -2083,7 +2189,7 @@ public class StaggeredGridView extends ViewGroup {
     public Drawable getSelector() {
         return mSelector;
     }
-    
+
     /**
      * Set a Drawable that should be used to highlight the currently selected item.
      *
@@ -2094,31 +2200,31 @@ public class StaggeredGridView extends ViewGroup {
     public void setSelector(int resID) {
         setSelector(getResources().getDrawable(resID));
     }
-    
+
     @Override
     public boolean verifyDrawable(Drawable dr) {
         return mSelector == dr || super.verifyDrawable(dr);
     }
 
     @TargetApi(Build.VERSION_CODES.HONEYCOMB)
-	@Override
+    @Override
     public void jumpDrawablesToCurrentState() {
         super.jumpDrawablesToCurrentState();
         if (mSelector != null) mSelector.jumpToCurrentState();
     }
-    
+
     public void setSelector(Drawable sel) {
         if (mSelector != null) {
             mSelector.setCallback(null);
             unscheduleDrawable(mSelector);
         }
-        
+
         mSelector = sel;
-        
+
         if(mSelector==null){
-        	return;
+            return;
         }
-         
+
         Rect padding = new Rect();
         sel.getPadding(padding);
         mSelectionLeftPadding = padding.left;
@@ -2129,7 +2235,7 @@ public class StaggeredGridView extends ViewGroup {
 //        updateSelectorState();
     }
 
-    
+
     /**
      * @return True if the current touch mode requires that we draw the selector in the pressed
      *         state.
@@ -2137,14 +2243,14 @@ public class StaggeredGridView extends ViewGroup {
     boolean touchModeDrawsInPressedState() {
         // FIXME use isPressed for this
         switch (mTouchMode) {
-        case TOUCH_MODE_TAP:
-        case TOUCH_MODE_DONE_WAITING:
-            return true;
-        default:
-            return false;
+            case TOUCH_MODE_TAP:
+            case TOUCH_MODE_DONE_WAITING:
+                return true;
+            default:
+                return false;
         }
     }
-    
+
     /**
      * Register a callback to be invoked when an item in this AdapterView has
      * been clicked.
@@ -2162,7 +2268,7 @@ public class StaggeredGridView extends ViewGroup {
     public final OnItemClickListener getOnItemClickListener() {
         return mOnItemClickListener;
     }
-    
+
     public interface OnItemClickListener {
 
         /**
@@ -2180,7 +2286,7 @@ public class StaggeredGridView extends ViewGroup {
          */
         void onItemClick(StaggeredGridView parent, View view, int position, long id);
     }
-    
+
     /**
      * Register a callback to be invoked when an item in this AdapterView has
      * been clicked and held
@@ -2190,7 +2296,7 @@ public class StaggeredGridView extends ViewGroup {
     public void setOnItemLongClickListener(OnItemLongClickListener listener) {
         if (!isLongClickable()) {
             setLongClickable(true);
-        } 
+        }
         mOnItemLongClickListener = listener;
     }
 
@@ -2201,7 +2307,7 @@ public class StaggeredGridView extends ViewGroup {
     public final OnItemLongClickListener getOnItemLongClickListener() {
         return mOnItemLongClickListener;
     }
-    
+
     public interface OnItemLongClickListener {
         /**
          * Callback method to be invoked when an item in this view has been
@@ -2219,7 +2325,7 @@ public class StaggeredGridView extends ViewGroup {
          */
         boolean onItemLongClick(StaggeredGridView parent, View view, int position, long id);
     }
-    
+
     /**
      * Maps a point to a position in the list.
      *
@@ -2249,13 +2355,13 @@ public class StaggeredGridView extends ViewGroup {
         return INVALID_POSITION;
     }
 
-	public boolean isDrawSelectorOnTop() {
-		return mDrawSelectorOnTop;
-	}
+    public boolean isDrawSelectorOnTop() {
+        return mDrawSelectorOnTop;
+    }
 
-	public void setDrawSelectorOnTop(boolean mDrawSelectorOnTop) {
-		this.mDrawSelectorOnTop = mDrawSelectorOnTop;
-	}
-    
-    
+    public void setDrawSelectorOnTop(boolean mDrawSelectorOnTop) {
+        this.mDrawSelectorOnTop = mDrawSelectorOnTop;
+    }
+
+
 }
