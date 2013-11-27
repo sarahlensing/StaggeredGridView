@@ -112,10 +112,10 @@ public class StaggeredGridView extends ViewGroup {
     private String mOrientation = STAGGERED_GRID_ORIENTATION_VERTICAL;
 
     private int mItemMargin;
-    private int mNumberPagesToPreload = 10;
+    private int mNumberPagesToPreload = 2;
 
-    private SparseArrayCompat<GridItem> mVisibleItems = new SparseArrayCompat<GridItem>();
-    private SparseArrayCompat<GridItem> mGridItems = new SparseArrayCompat<GridItem>();
+    private ArrayList<GridItem> mVisibleItems = new ArrayList<GridItem>();
+    private ArrayList<GridItem> mGridItems = new ArrayList<GridItem>();
 
     private boolean mFastChildLayout;
     private boolean mPopulating;
@@ -131,6 +131,7 @@ public class StaggeredGridView extends ViewGroup {
 
     private ArrayList<Rect> mPosRects = new ArrayList<Rect>();
     private ItemSize mContentSize;
+    private int mCurrentOffset = 0;
 
     private int mTouchSlop;
     private int mMaximumVelocity;
@@ -237,7 +238,7 @@ public class StaggeredGridView extends ViewGroup {
      */
     private Rect mTouchFrame;
 
-    private static final class GridItem {
+    private class GridItem extends Object {
         public long id = -1;
         public int position = -1;
         public Rect rect;
@@ -245,9 +246,16 @@ public class StaggeredGridView extends ViewGroup {
 
         @Override
         public String toString() {
-            String result = "LayoutRecord{c=" + ", id=" + id + " frame=" + rect.toString()+"}";
+            String result = "GridItem{c=" + ", id=" + id + " frame=" + rect.toString()+"}";
             return result;
         }
+
+        @Override
+        public boolean equals(Object o) {
+            GridItem other = (GridItem)o;
+            return ((this.id == other.id) && (this.position == other.position) && this.rect.equals(other.rect));
+        }
+
     }
 
     public StaggeredGridView(Context context) {
@@ -302,9 +310,7 @@ public class StaggeredGridView extends ViewGroup {
         final boolean needsPopulate = marginPixels != mItemMargin;
         mItemMargin = marginPixels;
         if (needsPopulate) {
-            //TODO:
-            layoutGridItems(0, defaultAmountToLayout());
-//            populate(false);
+            layoutGridItems();
         }
     }
 
@@ -421,6 +427,8 @@ public class StaggeredGridView extends ViewGroup {
 
     private void doScroll(int delta) {
         offsetChildren(delta);
+        layoutGridItems();
+        recycleOffscreenItems();
     }
 
     private void doScrollFling() {
@@ -524,10 +532,15 @@ public class StaggeredGridView extends ViewGroup {
         return true;
     }
 
-    private int getCurrentOffset() {
+    private int calculateCurrentOffset() {
+        int ret = -1;
         Rect viewportRect = new Rect(0, 0, getWidth(), getHeight());
         for (int i = 0; i < mVisibleItems.size(); i++) {
             GridItem item = mVisibleItems.get(i);
+            if (item == null) {
+                Log.d("GRID ITEM NULL, WHY", "");
+                continue;
+            }
             View itemView = item.view;
             if (itemView != null) {
                 Rect itemRect = new Rect(itemView.getLeft(), itemView.getTop(), itemView.getRight(), itemView.getBottom());
@@ -549,21 +562,25 @@ public class StaggeredGridView extends ViewGroup {
                             adjustedIntersection = -itemRect.left;
                         }
                     }
-                    int currOffset = unadjustedOffset + adjustedIntersection;
-                    return currOffset;
+                    ret = unadjustedOffset + adjustedIntersection;
+                    break;
                 }
                 else if (viewportRect.contains(itemRect)) {
                     if (vertical()) {
-                        return item.rect.top - getBeginningTop();
+                        ret = item.rect.top - getBeginningTop();
                     }
                     else {
-                        return item.rect.left - getBeginningLeft();
+                        ret = item.rect.left - getBeginningLeft();
                     }
+                    break;
                 }
             }
         }
-        Log.d("INVALID", "INVALID");
-        return -1;
+        if (ret == -1) {
+            Log.d("INVALID", "INVALID");
+        }
+        mCurrentOffset = ret;
+        return ret;
     }
 
     private boolean isLower(GridItem gridItem, int lowest) {
@@ -579,6 +596,10 @@ public class StaggeredGridView extends ViewGroup {
         int lowest = 0;
         for (int i = 0; i < mVisibleItems.size(); i++) {
             GridItem gridItem = mVisibleItems.get(i);
+            if (gridItem == null) {
+                Log.d("GRID ITEM NULL, WHY", "");
+                continue;
+            }
             if (isLower(gridItem, lowest)) {
                 lowest = vertical()?gridItem.rect.bottom:gridItem.rect.right;
             }
@@ -630,9 +651,9 @@ public class StaggeredGridView extends ViewGroup {
 //                left = false;
 //            }
             movedBy = Math.min(overhang, allowOverhang);
-            offsetChildren(towardsBeginning?movedBy:-movedBy);
 
-            recycleOffscreenViews();
+            doScroll(towardsBeginning ? movedBy : -movedBy);
+
             mPopulating = false;
             overScrolledBy = allowOverhang - overhang;
         } else {
@@ -651,15 +672,6 @@ public class StaggeredGridView extends ViewGroup {
                 }
             }
         }
-
-//        if (mSelectorPosition != INVALID_POSITION) {
-//            final int childIndex = mSelectorPosition - mFirstPosition;
-//            if (childIndex >= 0 && childIndex < getChildCount()) {
-//                positionSelector(INVALID_POSITION, getChildAt(childIndex));
-//            }
-//        } else {
-//            mSelectorRect.setEmpty();
-//        }
 
         return delta == 0 || movedBy != 0;
     }
@@ -693,167 +705,42 @@ public class StaggeredGridView extends ViewGroup {
             mRecycler.addScrap(getChildAt(i));
         }
 
-        if (mInLayout) {
+//        if (mInLayout) {
             removeAllViewsInLayout();
-        } else {
-            removeAllViews();
+//        } else {
+//            removeAllViews();
+//        }
+    }
+
+    private Rect getCurrViewportRect() {
+        if (vertical()) {
+            return new Rect(0, Math.min(0, mCurrentOffset-defaultAmountToLayout()), getWidth(), Math.min(mContentSize.height, mCurrentOffset+defaultAmountToLayout()));
+        }
+        else {
+            return new Rect(Math.min(mCurrentOffset-defaultAmountToLayout(), 0), 0, Math.min(mContentSize.width, mCurrentOffset+defaultAmountToLayout()), getHeight());
         }
     }
 
-    /**
-     * Important: this method will leave offscreen views attached if they
-     * are required to maintain the invariant that child view with index i
-     * is always the view corresponding to position mFirstPosition + i.
-     */
-    private void recycleOffscreenViews() {
-        if (mOrientation.equals(STAGGERED_GRID_ORIENTATION_VERTICAL)) {
-            final int height = getHeight();
-            final int clearAbove = -mItemMargin;
-            final int clearBelow = height + mItemMargin;
-            for (int i = getChildCount() - 1; i >= 0; i--) {
-                final View child = getChildAt(i);
-                if (child.getTop() <= clearBelow)  {
-                    // There may be other offscreen views, but we need to maintain
-                    // the invariant documented above.
-                    break;
-                }
-
-                if (mInLayout) {
-                    removeViewsInLayout(i, 1);
-                } else {
-                    removeViewAt(i);
-                }
-
-                mRecycler.addScrap(child);
-            }
-
-            while (getChildCount() > 0) {
-                final View child = getChildAt(0);
-                if (child.getBottom() >= clearAbove) {
-                    // There may be other offscreen views, but we need to maintain
-                    // the invariant documented above.
-                    break;
-                }
-
-                if (mInLayout) {
-                    removeViewsInLayout(0, 1);
-                } else {
-                    removeViewAt(0);
-                }
-
-                mRecycler.addScrap(child);
-//                mFirstPosition++;
-            }
-
-            final int childCount = getChildCount();
-            if (childCount > 0) {
-                // Repair the top and bottom column boundaries from the views we still have
-//                Arrays.fill(mItemTops, Integer.MAX_VALUE);
-//                Arrays.fill(mItemBottoms, Integer.MIN_VALUE);
-
-                for (int i = 0; i < childCount; i++){
-                    final View child = getChildAt(i);
-                    final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-                    final int top = child.getTop() - mItemMargin;
-                    final int bottom = child.getBottom();
-//                    final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
-
-//                    final int colEnd = lp.column + mColCount;
-//                    for (int col = lp.column; col < colEnd; col++) {
-//                        final int colTop = top - rec.getMarginAbove(col - lp.column);
-//                        final int colBottom = bottom + rec.getMarginBelow(col - lp.column);
-//                        if (colTop < mItemTops[col]) {
-//                            mItemTops[col] = colTop;
-//                        }
-//                        if (colBottom > mItemBottoms[col]) {
-//                            mItemBottoms[col] = colBottom;
-//                        }
-//                    }
-                }
-
-//                for (int col = 0; col < mColCount; col++) {
-//                    if (mItemTops[col] == Integer.MAX_VALUE) {
-//                        // If one was untouched, both were.
-//                        mItemTops[col] = 0;
-//                        mItemBottoms[col] = 0;
-//                    }
-//                }
+    private ArrayList<GridItem> getNextOffscreenItems() {
+        Rect currViewport = getCurrViewportRect();
+        ArrayList<GridItem> ret = new ArrayList<GridItem>();
+        for (GridItem item : mVisibleItems) {
+            if (!currViewport.contains(item.rect)) {
+                ret.add(item);
             }
         }
-        else {
-            //TODO uncomment
-//            final int width = getWidth();
-//            final int clearLeft = -mItemMargin;
-//            final int clearRight = width + mItemMargin;
-//            for (int i = getChildCount() - 1; i >= 0; i--) {
-//                final View child = getChildAt(i);
-//                if (child.getTop() <= clearRight)  {
-//                    // There may be other offscreen views, but we need to maintain
-//                    // the invariant documented above.
-//                    break;
-//                }
-//
-//                if (mInLayout) {
-//                    removeViewsInLayout(i, 1);
-//                } else {
-//                    removeViewAt(i);
-//                }
-//
-//                mRecycler.addScrap(child);
-//            }
-//
-//            while (getChildCount() > 0) {
-//                final View child = getChildAt(0);
-//                if (child.getBottom() >= clearLeft) {
-//                    // There may be other offscreen views, but we need to maintain
-//                    // the invariant documented above.
-//                    break;
-//                }
-//
-//                if (mInLayout) {
-//                    removeViewsInLayout(0, 1);
-//                } else {
-//                    removeViewAt(0);
-//                }
-//
-//                mRecycler.addScrap(child);
-//                mFirstPosition++;
-//            }
-//
-//            final int childCount = getChildCount();
-//            if (childCount > 0) {
-//                // Repair the top and bottom column boundaries from the views we still have
-//                Arrays.fill(mItemLefts, Integer.MAX_VALUE);
-//                Arrays.fill(mItemRights, Integer.MIN_VALUE);
-//
-//                for (int i = 0; i < childCount; i++){
-//                    final View child = getChildAt(i);
-//                    final LayoutParams lp = (LayoutParams) child.getLayoutParams();
-//                    final int left = child.getLeft() - mItemMargin;
-//                    final int right = child.getRight();
-//                    final LayoutRecord rec = mLayoutRecords.get(mFirstPosition + i);
-//
-//                    final int rowEnd = lp.row + mRowCount;
-//                    for (int row = lp.row; row < rowEnd; row++) {
-//                        final int rowLeft = left - rec.getMarginToLeft(row - lp.row);
-//                        final int rowRight = right + rec.getMarginToRight(row - lp.row);
-//                        if (rowLeft < mItemLefts[row]) {
-//                            mItemLefts[row] = rowLeft;
-//                        }
-//                        if (rowRight > mItemRights[row]) {
-//                            mItemRights[row] = rowRight;
-//                        }
-//                    }
-//                }
-//
-//                for (int row = 0; row < mRowCount; row++) {
-//                    if (mItemLefts[row] == Integer.MAX_VALUE) {
-//                        // If one was untouched, both were.
-//                        mItemLefts[row] = 0;
-//                        mItemRights[row] = 0;
-//                    }
-//                }
-//            }
+        return ret;
+    }
+
+    private void recycleOffscreenItems() {
+        ArrayList<GridItem> nowOffscreens = getNextOffscreenItems();
+        for (GridItem item : nowOffscreens) {
+            View view = item.view;
+            removeViewInLayout(view);
+            Log.d("MYVIEWCOUNT", String.valueOf(this.getChildCount()));
+            mRecycler.addScrap(view);
+            item.view = null;
+            mVisibleItems.remove(item);
         }
     }
 
@@ -972,8 +859,7 @@ public class StaggeredGridView extends ViewGroup {
 
     public void endFastChildLayout() {
         mFastChildLayout = false;
-        //TODO: add current x,y value
-        layoutGridItems(0, defaultAmountToLayout());
+        layoutGridItems();
     }
 
     @Override
@@ -1016,7 +902,9 @@ public class StaggeredGridView extends ViewGroup {
         mPosRects.clear();
         mGridItems.clear();
         mVisibleItems.clear();
-        mContentSize = null;
+        mContentSize = new ItemSize(0,0);
+        mCurrentOffset = 0;
+        recycleAllViews();
     }
 
     private int defaultAmountToLayout() {
@@ -1032,7 +920,7 @@ public class StaggeredGridView extends ViewGroup {
         if (shouldLayout()) {
             prepareToBuildItems();
             buildGridItems();
-            layoutGridItems(0, defaultAmountToLayout());
+            layoutGridItems();
         }
         mInLayout = false;
         updateEdgeSizes(l, t, r, b);
@@ -1388,7 +1276,7 @@ public class StaggeredGridView extends ViewGroup {
             item.position = i;
             ItemSize size = mAdapter.getItemSize(i);
             item.rect = calculateNextItemRect(size);
-            mGridItems.append(i,item);
+            mGridItems.add(i,item);
         }
     }
 
@@ -1407,10 +1295,11 @@ public class StaggeredGridView extends ViewGroup {
 
     private View getViewForGridItem(GridItem item) {
         int position = item.position;
+//        final View child = obtainView(position, item.view);
         final View child = obtainView(position, null);
 
         if(child == null) {
-            Log.d("PROBELM", "NULL CHILD");
+            Log.d("PROBLEM", "NULL CHILD");
         }
 
         LayoutParams lp = (LayoutParams) child.getLayoutParams();
@@ -1420,11 +1309,12 @@ public class StaggeredGridView extends ViewGroup {
         }
         child.setTag(R.string.GRID_ITEM_TAG, item);
         if (child.getParent() != this) {
-            if (mInLayout) {
-                addViewInLayout(child, -1, lp);
-            } else {
-                addView(child);
-            }
+//            if (mInLayout) {
+                addViewInLayout(child, -1, lp); //always addViewInLayout so we dont trigger onLayout
+//            } else {
+//                addView(child);
+//            }
+            Log.d("MYVIEWCOUNT", String.valueOf(this.getChildCount()));
         }
         return child;
     }
@@ -1432,19 +1322,53 @@ public class StaggeredGridView extends ViewGroup {
     private void layoutGridItem(GridItem item) {
         View child = getViewForGridItem(item);
         child.measure(item.rect.width(),item.rect.height());
-        child.layout(item.rect.left, item.rect.top, item.rect.right, item.rect.bottom);
+        if (vertical()) {
+            child.layout(item.rect.left, item.rect.top-mCurrentOffset, item.rect.right, item.rect.bottom-mCurrentOffset);
+        }
+        else {
+            child.layout(item.rect.left-mCurrentOffset, item.rect.top, item.rect.right-mCurrentOffset, item.rect.bottom);
+        }
         item.view = child;
-        mVisibleItems.append(item.position, item);
+//        mVisibleItems.add(item.position, item);
+        mVisibleItems.add(item);
     }
 
-    private void layoutGridItems(int start, int end) {
+    private ArrayList<GridItem> getNextVisibleItems(int start, int end) {
+        ArrayList<GridItem> ret = new ArrayList<GridItem>();
         Rect layoutRect = getLayoutRect(start, end);
-
         for (int i = 0; i < mGridItems.size(); i++) {
             GridItem item = mGridItems.get(i);
             if (shouldLayout(item.rect, layoutRect)) {
+                ret.add(item);
+            }
+        }
+        return ret;
+    }
+
+    private boolean needsLayout(ArrayList<GridItem>nextVisibles) {
+        return !nextVisibles.equals(mVisibleItems);
+    }
+
+    private void layoutItems(ArrayList<GridItem>nextVisibles) {
+        if (nextVisibles.size() == 0) {
+            return; //no items to add to grid
+        }
+        for (int i = 0; i < nextVisibles.size(); i++) {
+            GridItem item = nextVisibles.get(i);
+            if (!mVisibleItems.contains(item)) {
                 layoutGridItem(item);
             }
+        }
+    }
+
+    private void layoutGridItems() {
+        layoutGridItems(mCurrentOffset, mCurrentOffset+defaultAmountToLayout());
+    }
+
+    private void layoutGridItems(int start, int end) {
+        ArrayList<GridItem> nextVisibles = getNextVisibleItems(start, end);
+        if (needsLayout(nextVisibles)) {
+            layoutItems(nextVisibles);
         }
     }
 
@@ -1462,14 +1386,14 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     final void offsetChildren(int offset) {
-        int currOffset = getCurrentOffset();
-        Log.d("CURR OFFSET", String.valueOf(currOffset));
-        int nextPredictedOffset = currOffset - offset;
+//        Log.d("CURR OFFSET", String.valueOf(mCurrentOffset));
+
+        int nextPredictedOffset = mCurrentOffset - offset;
         if (nextPredictedOffset < getMinAllowedOffset()) {
-            offset = currOffset;
+            offset = mCurrentOffset;
         }
         else if (nextPredictedOffset > getMaxAllowedOffset()) {
-            offset = currOffset - getMaxAllowedOffset();
+            offset = mCurrentOffset - getMaxAllowedOffset();
         }
 
         if (offset != 0) {
@@ -1479,6 +1403,7 @@ public class StaggeredGridView extends ViewGroup {
                 offsetChild(child, offset);
             }
         }
+        calculateCurrentOffset();
     }
 
     final void offsetChild(View child, int offset) {
@@ -1511,7 +1436,7 @@ public class StaggeredGridView extends ViewGroup {
         }
 
         if(position >= mAdapter.getCount()){
-            view = null;
+            Log.d("PROBLEM", "ASKING FOR POSITION THAT DOESNT EXIST");
             return null;
         }
 
