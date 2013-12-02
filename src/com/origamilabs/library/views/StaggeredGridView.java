@@ -426,6 +426,10 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     private void doScroll(int delta) {
+        final boolean contentFits = contentFits();
+        if (contentFits) {
+            return;
+        }
         offsetChildren(delta);
         layoutGridItems();
         recycleOffscreenItems();
@@ -620,6 +624,9 @@ public class StaggeredGridView extends ViewGroup {
      */
     private boolean trackMotionScroll(int delta, boolean allowOverScroll) {
         final boolean contentFits = contentFits();
+        if (contentFits) {
+            return true;
+        }
         final int allowOverhang = Math.abs(delta);
 
         final int overScrolledBy;
