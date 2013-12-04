@@ -228,10 +228,22 @@ public class StaggeredGridView extends ViewGroup {
      * @param marginPixels Spacing between items in pixels
      */
     public void setItemMargin(int marginPixels) {
-        final boolean needsPopulate = marginPixels != mItemMargin;
+        final boolean needsReload = marginPixels != mItemMargin;
         mItemMargin = marginPixels;
-        if (needsPopulate) {
-            layoutGridItems();
+        if (needsReload) {
+            reloadGrid();
+        }
+    }
+
+    public String getGridOrientation() {
+        return mOrientation;
+    }
+
+    public void setGridOrientation(String orientation) {
+        final boolean needsReload = orientation != mOrientation;
+        mOrientation = orientation;
+        if (needsReload) {
+            reloadGrid();
         }
     }
 
@@ -736,13 +748,17 @@ public class StaggeredGridView extends ViewGroup {
         return getWidth() * mNumberPagesToPreload;
     }
 
+    private void reloadGrid() {
+        prepareToBuildItems();
+        buildGridItems();
+        layoutGridItems();
+    }
+
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         mInLayout = true;
         if (shouldLayout()) {
-            prepareToBuildItems();
-            buildGridItems();
-            layoutGridItems();
+            reloadGrid();
         }
         mInLayout = false;
         updateEdgeSizes(l, t, r, b);
