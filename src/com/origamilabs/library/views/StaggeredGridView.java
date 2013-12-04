@@ -536,57 +536,6 @@ public class StaggeredGridView extends ViewGroup {
         return true;
     }
 
-    private int calculateCurrentOffset() {
-        int ret = -1;
-        Rect viewportRect = new Rect(0, 0, getWidth(), getHeight());
-        for (int i = 0; i < mVisibleItems.size(); i++) {
-            GridItem item = mVisibleItems.get(i);
-            if (item == null) {
-                Log.d("GRID ITEM NULL, WHY", "");
-                continue;
-            }
-            View itemView = item.view;
-            if (itemView != null) {
-                Rect itemRect = new Rect(itemView.getLeft(), itemView.getTop(), itemView.getRight(), itemView.getBottom());
-                if (itemRect.intersect(viewportRect)) {
-                    //itemRect will now be a rect of the intersection if they intersect
-                    int unadjustedOffset;
-                    int adjustedIntersection;
-                    if (vertical()) {
-                        unadjustedOffset = item.rect.top;
-                        adjustedIntersection = item.rect.height() - itemRect.height();
-                        if (adjustedIntersection == 0) {
-                            adjustedIntersection = -itemRect.top;
-                        }
-                    }
-                    else {
-                        unadjustedOffset = item.rect.left;
-                        adjustedIntersection = item.rect.width() - itemRect.width();
-                        if (adjustedIntersection == 0) {
-                            adjustedIntersection = -itemRect.left;
-                        }
-                    }
-                    ret = unadjustedOffset + adjustedIntersection;
-                    break;
-                }
-                else if (viewportRect.contains(itemRect)) {
-                    if (vertical()) {
-                        ret = item.rect.top - getBeginningTop();
-                    }
-                    else {
-                        ret = item.rect.left - getBeginningLeft();
-                    }
-                    break;
-                }
-            }
-        }
-        if (ret == -1) {
-            Log.d("INVALID", "INVALID");
-        }
-        mCurrentOffset = ret;
-        return ret;
-    }
-
     private boolean isLower(GridItem gridItem, int lowest) {
         if (vertical()) {
             return gridItem.rect.bottom > lowest;
@@ -713,7 +662,7 @@ public class StaggeredGridView extends ViewGroup {
         }
 
 //        if (mInLayout) {
-            removeAllViewsInLayout();
+        removeAllViewsInLayout();
 //        } else {
 //            removeAllViews();
 //        }
@@ -721,10 +670,10 @@ public class StaggeredGridView extends ViewGroup {
 
     private Rect getCurrViewportRect() {
         if (vertical()) {
-            return new Rect(0, Math.min(0, mCurrentOffset-defaultAmountToLayout()), getWidth(), Math.min(mContentSize.height, mCurrentOffset+defaultAmountToLayout()));
+            return new Rect(0, Math.max(0, mCurrentOffset-defaultAmountToLayout()), getWidth(), Math.min(mContentSize.height, mCurrentOffset+defaultAmountToLayout()));
         }
         else {
-            return new Rect(Math.min(mCurrentOffset-defaultAmountToLayout(), 0), 0, Math.min(mContentSize.width, mCurrentOffset+defaultAmountToLayout()), getHeight());
+            return new Rect(Math.max(mCurrentOffset-defaultAmountToLayout(), 0), 0, Math.min(mContentSize.width, mCurrentOffset+defaultAmountToLayout()), getHeight());
         }
     }
 
@@ -1317,11 +1266,11 @@ public class StaggeredGridView extends ViewGroup {
         child.setTag(R.string.GRID_ITEM_TAG, item);
         if (child.getParent() != this) {
 //            if (mInLayout) {
-                addViewInLayout(child, -1, lp); //always addViewInLayout so we dont trigger onLayout
+            addViewInLayout(child, -1, lp); //always addViewInLayout so we dont trigger onLayout
 //            } else {
 //                addView(child);
 //            }
-            Log.d("MYVIEWCOUNT", String.valueOf(this.getChildCount()));
+//            Log.d("MYVIEWCOUNT", String.valueOf(this.getChildCount()));
         }
         return child;
     }
@@ -1410,7 +1359,7 @@ public class StaggeredGridView extends ViewGroup {
                 offsetChild(child, offset);
             }
         }
-        calculateCurrentOffset();
+        mCurrentOffset-=offset;
     }
 
     final void offsetChild(View child, int offset) {
