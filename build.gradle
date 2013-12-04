@@ -43,3 +43,8 @@ uploadArchives {
     }
 }
 task install(dependsOn: uploadArchives)
+
+
+sourceCompatibility = 1.5
+version = '1.0'
+

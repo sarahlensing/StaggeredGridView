@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <declare-styleable name="StaggeredGridView">
-        <attr name="drawSelectorOnTop" format="boolean" />
-        <attr name="numColumns" format="integer" />
-        <attr name="itemMargin" format="dimension" />
+      <attr name="itemMargin" format="dimension" />
+	  <attr name="numPagesToPreload" format="integer" />
+      <attr name="gridOrientation" format="string" />
     </declare-styleable>
 </resources>

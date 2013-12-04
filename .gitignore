@@ -18,6 +18,10 @@ local.properties
 # Eclipse project files
 .classpath
 .project
+<<<<<<< HEAD
 
 #gradle
 build
+.gradle
+/.idea*
+.DS_Store
