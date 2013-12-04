@@ -1,4 +1,4 @@
-package com.origamilabs.library.views;
+package com.samsung.staggeredgridview;
 
 import android.widget.BaseAdapter;
 import android.widget.ListAdapter;

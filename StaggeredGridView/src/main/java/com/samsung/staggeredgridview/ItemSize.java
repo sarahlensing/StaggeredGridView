@@ -1,4 +1,4 @@
-package com.origamilabs.library.views;
+package com.samsung.staggeredgridview;
 
 public class ItemSize {
 

@@ -1,4 +1,4 @@
-package com.origamilabs.library.views;
+package com.samsung.staggeredgridview;
 
 /*
  * Copyright (C) 2012 The Android Open Source Project
@@ -16,32 +16,19 @@ package com.origamilabs.library.views;
  * limitations under the License.
  * 
  * modified by Maurycy Wojtowicz
+ * and later modified by Sarah Lensing
  * 
  */
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.IllegalFormatException;
-
-import com.origamilabs.library.R;
-
-import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.res.TypedArray;
 import android.database.DataSetObserver;
 import android.graphics.Canvas;
 import android.graphics.Point;
 import android.graphics.Rect;
-import android.graphics.drawable.Drawable;
-import android.graphics.drawable.TransitionDrawable;
-import android.os.Build;
 import android.os.Handler;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.support.v4.util.SparseArrayCompat;
 import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.VelocityTrackerCompat;
 import android.support.v4.view.ViewCompat;
@@ -49,7 +36,6 @@ import android.support.v4.widget.EdgeEffectCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseArray;
-import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
@@ -61,17 +47,17 @@ import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ListAdapter;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+
 /**
  * ListView and GridView just not complex enough? Try StaggeredGridView!
  *
- * <p>StaggeredGridView presents a multi-column grid with consistent column sizes
- * but varying row sizes between the columns. Each successive item from a
- * {@link android.widget.ListAdapter ListAdapter} will be arranged from top to bottom,
- * left to right. The largest vertical gap is always filled first.</p>
+ * <p>StaggeredGridView presents a multi-column and multi-row grid. Each successive item from a
+ * {@link com.samsung.staggeredgridview.StaggeredGridAdapter StaggeredGridAdapter} will be arranged from top to bottom
+ * or left to right. The largest vertical or horizontal gap (depending on grid orientation) is always filled first .</p>
  *
- * <p>Item views may span multiple columns as specified by their {@link LayoutParams}.
- * The attribute <code>android:layout_span</code> may be used when inflating
- * item views from xml.</p>
  */
 public class StaggeredGridView extends ViewGroup {
     private static final String TAG = "StaggeredGridView";
@@ -81,13 +67,13 @@ public class StaggeredGridView extends ViewGroup {
     public static final String STAGGERED_GRID_ORIENTATION_VERTICAL = "vertical";
     public static final String STAGGERED_GRID_ORIENTATION_HORIZONTAL = "horizontal";
     public static final String STAGGERED_GRID_DEFAULT_ORIENTATION = STAGGERED_GRID_ORIENTATION_HORIZONTAL;
-    private String mOrientation;
+    private String mOrientation = STAGGERED_GRID_DEFAULT_ORIENTATION;
 
     private static final int STAGGERED_GRID_DEFAULT_ITEM_MARGIN = 10;
-    private int mItemMargin;
+    private int mItemMargin = STAGGERED_GRID_DEFAULT_ITEM_MARGIN;
 
     public static final int STAGGERED_GRID_DEFAULT_NUM_PAGES_TO_PRELOAD = 2;
-    private int mNumberPagesToPreload;
+    private int mNumberPagesToPreload = STAGGERED_GRID_DEFAULT_NUM_PAGES_TO_PRELOAD;
 
     private ArrayList<GridItem> mVisibleItems = new ArrayList<GridItem>();
     private ArrayList<GridItem> mGridItems = new ArrayList<GridItem>();
@@ -201,14 +187,19 @@ public class StaggeredGridView extends ViewGroup {
         super(context, attrs, defStyle);
 
         if(attrs!=null){
-            TypedArray a=getContext().obtainStyledAttributes( attrs, R.styleable.StaggeredGridView);
-            mOrientation = a.getString(R.styleable.StaggeredGridView_gridOrientation);
-            mNumberPagesToPreload = a.getInt(R.styleable.StaggeredGridView_numberOfPagesToPreload, STAGGERED_GRID_DEFAULT_NUM_PAGES_TO_PRELOAD);
-            mItemMargin = (int)a.getDimension(R.styleable.StaggeredGridView_itemMargin, STAGGERED_GRID_DEFAULT_ITEM_MARGIN);
-        }else{
-            mOrientation = STAGGERED_GRID_DEFAULT_ORIENTATION;
-            mNumberPagesToPreload = STAGGERED_GRID_DEFAULT_NUM_PAGES_TO_PRELOAD;
-            mItemMargin = STAGGERED_GRID_DEFAULT_ITEM_MARGIN;
+            TypedArray a=getContext().obtainStyledAttributes(attrs, R.styleable.StaggeredGridView);
+            if (a != null) {
+                mOrientation = a.getString(R.styleable.StaggeredGridView_gridOrientation);
+                if (mOrientation == null) {
+                    mOrientation = STAGGERED_GRID_DEFAULT_ORIENTATION;
+                }
+                mNumberPagesToPreload = a.getInt(R.styleable.StaggeredGridView_numPagesToPreload, STAGGERED_GRID_DEFAULT_NUM_PAGES_TO_PRELOAD);
+                mItemMargin = (int)a.getDimension(R.styleable.StaggeredGridView_itemMargin, STAGGERED_GRID_DEFAULT_ITEM_MARGIN);
+            }else{
+                mOrientation = STAGGERED_GRID_DEFAULT_ORIENTATION;
+                mNumberPagesToPreload = STAGGERED_GRID_DEFAULT_NUM_PAGES_TO_PRELOAD;
+                mItemMargin = STAGGERED_GRID_DEFAULT_ITEM_MARGIN;
+            }
         }
 
         final ViewConfiguration vc = ViewConfiguration.get(context);
@@ -1587,7 +1578,7 @@ public class StaggeredGridView extends ViewGroup {
                     + " position=" + position + "}";
         }
 
-        public static final Parcelable.Creator<SavedState> CREATOR = new Parcelable.Creator<SavedState>() {
+        public static final Creator<SavedState> CREATOR = new Creator<SavedState>() {
             public SavedState createFromParcel(Parcel in) {
                 return new SavedState(in);
             }
@@ -1791,11 +1782,11 @@ public class StaggeredGridView extends ViewGroup {
 
     /**
      * Extra menu information provided to the
-     * {@link android.view.View.OnCreateContextMenuListener#onCreateContextMenu(ContextMenu, View, ContextMenuInfo) }
+     * {@link android.view.View.OnCreateContextMenuListener#onCreateContextMenu(android.view.ContextMenu, android.view.View, android.view.ContextMenu.ContextMenuInfo) }
      * callback when a context menu is brought up for this AdapterView.
      *
      */
-    public static class AdapterContextMenuInfo implements ContextMenu.ContextMenuInfo {
+    public static class AdapterContextMenuInfo implements ContextMenuInfo {
 
         public AdapterContextMenuInfo(View targetView, int position, long id) {
             this.targetView = targetView;

@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">StaggeredGridView</string>
+    <string name="GRID_ITEM_TAG">0</string>
+</resources>
