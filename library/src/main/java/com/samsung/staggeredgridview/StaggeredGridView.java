@@ -589,7 +589,7 @@ public class StaggeredGridView extends ViewGroup {
         Rect currViewport = getCurrViewportRect();
         ArrayList<GridItem> ret = new ArrayList<GridItem>();
         for (GridItem item : mVisibleItems) {
-            if (!currViewport.contains(item.rect)) {
+            if (!Rect.intersects(currViewport, item.rect)) {
                 ret.add(item);
             }
         }
