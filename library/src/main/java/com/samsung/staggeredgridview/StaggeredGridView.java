@@ -94,6 +94,8 @@ public class StaggeredGridView extends ViewGroup {
     private ItemSize mContentSize;
     private int mCurrentOffset = 0;
 
+    private ArrayList<Integer> mSectionIndexes;
+
     private int mTouchSlop;
     private int mMaximumVelocity;
     private int mFlingVelocity;
@@ -158,6 +160,9 @@ public class StaggeredGridView extends ViewGroup {
     private class GridItem extends Object {
         public long id = -1;
         public int position = -1;
+        public int section = -1;
+        public boolean isSection;
+        public int rawPosition = -1;
         public Rect rect;
         public View view;
 
@@ -170,7 +175,9 @@ public class StaggeredGridView extends ViewGroup {
         @Override
         public boolean equals(Object o) {
             GridItem other = (GridItem)o;
-            return ((this.id == other.id) && (this.position == other.position) && this.rect.equals(other.rect));
+            return ((this.id == other.id) && (this.position == other.position) && this.rect.equals(other.rect) &&
+                    (this.isSection == other.isSection) && (this.section == other.section) &&
+                    (this.rawPosition == other.rawPosition));
         }
 
     }
@@ -594,7 +601,7 @@ public class StaggeredGridView extends ViewGroup {
         for (GridItem item : nowOffscreens) {
             View view = item.view;
             removeViewInLayout(view);
-            Log.d("MYVIEWCOUNT", String.valueOf(this.getChildCount()));
+//            Log.d("MYVIEWCOUNT", String.valueOf(this.getChildCount()));
             mRecycler.addScrap(view);
             item.view = null;
             mVisibleItems.remove(item);
@@ -830,7 +837,7 @@ public class StaggeredGridView extends ViewGroup {
         return sortedPosRects;
     }
 
-    private Point getNextPoint(int itemSpace) {
+    private Point getNextPoint(int itemSpace, boolean isSection) {
         Point ret;
         if (mPosRects.size() == 0) {
             ret = new Point(getBeginningLeft(), getBeginningTop());
@@ -838,6 +845,10 @@ public class StaggeredGridView extends ViewGroup {
         else {
             if (vertical()) {
                 ArrayList<Rect> sorted = sortedRects();
+                if (isSection) {
+                    Rect lastPosRect = sorted.get(mPosRects.size()-1);
+                    return new Point(getBeginningLeft(), lastPosRect.bottom + mItemMargin);
+                }
                 Rect lastPosRect = mPosRects.get(mPosRects.size()-1);
                 //not a lot of pos rects yet so just get next space to right
                 if (getEndingRight() - lastPosRect.right >= itemSpace) {
@@ -855,6 +866,10 @@ public class StaggeredGridView extends ViewGroup {
             }
             else {
                 ArrayList<Rect> sorted = sortedRects();
+                if (isSection) {
+                    Rect lastPosRect = sorted.get(mPosRects.size()-1);
+                    return new Point(lastPosRect.right + mItemMargin, getBeginningTop());
+                }
                 Rect lastPosRect = mPosRects.get(mPosRects.size()-1);
                 //not a lot of pos rects yet so just get next space below
                 if (getEndingBottom() - lastPosRect.bottom >= itemSpace) {
@@ -1054,11 +1069,11 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
-    private Rect calculateNextItemRect(ItemSize size) {
+    private Rect calculateNextItemRect(ItemSize size, boolean isSection) {
         int itemWidth = size.width;
         int itemHeight = size.height;
 
-        Point point = getNextPoint(itemHeight);
+        Point point = getNextPoint(itemHeight, isSection);
         int nextLeft = point.x;
         int nextTop = point.y;
 
@@ -1073,20 +1088,66 @@ public class StaggeredGridView extends ViewGroup {
         return ret;
     }
 
+    private StaggeredGridSectionAdapter getSectionAdapter() {
+        return (StaggeredGridSectionAdapter)mAdapter;
+    }
+
+    private boolean hasSectionAdapter() {
+        return mAdapter instanceof StaggeredGridSectionAdapter;
+    }
+
+    private ArrayList<Integer> getSectionsFromAdapter() {
+        ArrayList<Integer> ret = new ArrayList<Integer>();
+        if (hasSectionAdapter()) {
+            for (int i = 0; i < getSectionAdapter().getSectionCount(); i++) {
+                ret.add(getSectionAdapter().getItemCountForSection(i));
+            }
+            return ret;
+        }
+        ret.add(mAdapter.getCount());
+        return ret;
+    }
+
     private void buildGridItems() {
         if (mAdapter == null) {
             return;
         }
-        int start = 0;
-        int end = mAdapter.getCount();
 
-        for (int i = start; i < end; i++) {
-            GridItem item = new GridItem();
-            item.id = mAdapter.getItemId(i);
-            item.position = i;
-            ItemSize size = mAdapter.getItemSize(i);
-            item.rect = calculateNextItemRect(size);
-            mGridItems.add(i,item);
+        mSectionIndexes = getSectionsFromAdapter();
+
+        int sectionStart = 0;
+        int sectionEnd = mSectionIndexes.size();
+
+        int rawPosition = 0;
+
+        for (int i = sectionStart; i < sectionEnd; i++) {
+            if (hasSectionAdapter()) {
+                GridItem sectionItem = new GridItem();
+                sectionItem.id = getSectionAdapter().getSectionID(i);
+                sectionItem.position = i;
+                sectionItem.section = i;
+                sectionItem.isSection = true;
+                sectionItem.rawPosition = rawPosition;
+                ItemSize sectionSize = getSectionAdapter().getSectionSize(i);
+                sectionItem.rect = calculateNextItemRect(sectionSize, sectionItem.isSection);
+                mGridItems.add(i,sectionItem);
+            }
+
+            int numItemsInSection = mSectionIndexes.get(i);
+            for (int j = 0; j < numItemsInSection; j++) {
+                rawPosition++;
+
+                GridItem item = new GridItem();
+                item.id = mAdapter.getItemId(j);
+                item.position = j;
+                item.section = i;
+                item.isSection = false;
+                item.rawPosition = rawPosition;
+                ItemSize size = mAdapter.getItemSize(j);
+                item.rect = calculateNextItemRect(size, item.isSection);
+                mGridItems.add(j,item);
+            }
+            rawPosition++;
         }
     }
 
@@ -1105,8 +1166,13 @@ public class StaggeredGridView extends ViewGroup {
 
     private View getViewForGridItem(GridItem item) {
         int position = item.position;
-//        final View child = obtainView(position, item.view);
-        final View child = obtainView(position, null);
+        final View child;
+        if (item.isSection) {
+            child = obtainSectionView(position, null, item.rawPosition);
+        }
+        else {
+            child = obtainView(position, null, item.rawPosition);
+        }
 
         if(child == null) {
             Log.d("PROBLEM", "NULL CHILD");
@@ -1230,6 +1296,46 @@ public class StaggeredGridView extends ViewGroup {
     }
 
 
+    final View obtainSectionView(int position, View optScrap, int rawPosition) {
+        View view = mRecycler.getTransientStateView(position);
+        if (view != null) {
+            return view;
+        }
+
+        if(position >= getSectionAdapter().getCount()){
+            Log.d("PROBLEM", "ASKING FOR POSITION THAT DOESNT EXIST");
+            return null;
+        }
+
+        // Reuse optScrap if it's of the right type (and not null)
+        final int optType = optScrap != null ? ((LayoutParams) optScrap.getLayoutParams()).viewType : -1;
+        final int positionViewType = getAdapterViewTypeCount() - 1; //position
+        final View scrap = optType == positionViewType ? optScrap : mRecycler.getScrapView(positionViewType);
+
+        view = getSectionAdapter().getSectionView(position, scrap, this);
+
+        if (view != scrap && scrap != null) {
+            // The adapter didn't use it; put it back.
+            mRecycler.addScrap(scrap);
+        }
+
+        ViewGroup.LayoutParams lp = view.getLayoutParams();
+
+        if (view.getParent() != this) {
+            if (lp == null) {
+                lp = generateDefaultLayoutParams();
+            } else if (!checkLayoutParams(lp)) {
+                lp = generateLayoutParams(lp);
+            }
+        }
+
+        final LayoutParams sglp = (LayoutParams) lp;
+        sglp.position = rawPosition;
+        sglp.viewType = positionViewType;
+        view.setLayoutParams(sglp);
+
+        return view;
+    }
 
     /**
      * Obtain a populated view from the adapter. If optScrap is non-null and is not
@@ -1239,7 +1345,7 @@ public class StaggeredGridView extends ViewGroup {
      * @param optScrap Optional scrap view; will be reused if possible
      * @return A new view, a recycled view from mRecycler, or optScrap
      */
-    final View obtainView(int position, View optScrap) {
+    final View obtainView(int position, View optScrap, int rawPosition) {
         View view = mRecycler.getTransientStateView(position);
         if (view != null) {
             return view;
@@ -1251,11 +1357,9 @@ public class StaggeredGridView extends ViewGroup {
         }
 
         // Reuse optScrap if it's of the right type (and not null)
-        final int optType = optScrap != null ?
-                ((LayoutParams) optScrap.getLayoutParams()).viewType : -1;
+        final int optType = optScrap != null ? ((LayoutParams) optScrap.getLayoutParams()).viewType : -1;
         final int positionViewType = mAdapter.getItemViewType(position);
-        final View scrap = optType == positionViewType ?
-                optScrap : mRecycler.getScrapView(positionViewType);
+        final View scrap = optType == positionViewType ? optScrap : mRecycler.getScrapView(positionViewType);
 
         view = mAdapter.getView(position, scrap, this);
 
@@ -1275,7 +1379,7 @@ public class StaggeredGridView extends ViewGroup {
         }
 
         final LayoutParams sglp = (LayoutParams) lp;
-        sglp.position = position;
+        sglp.position = rawPosition;
         sglp.viewType = positionViewType;
 
         return view;
@@ -1283,6 +1387,17 @@ public class StaggeredGridView extends ViewGroup {
 
     public ListAdapter getAdapter() {
         return mAdapter;
+    }
+
+    private int getSectionAdapterViewTypeCount() {
+        return 1; //for now only support one view type for header
+    }
+
+    private int getAdapterViewTypeCount() {
+        if (hasSectionAdapter()) {
+            return mAdapter.getViewTypeCount() + getSectionAdapterViewTypeCount();
+        }
+        return mAdapter.getViewTypeCount();
     }
 
     public void setAdapter(StaggeredGridAdapter adapter) {
@@ -1297,7 +1412,7 @@ public class StaggeredGridView extends ViewGroup {
 
         if (adapter != null) {
             adapter.registerDataSetObserver(mObserver);
-            mRecycler.setViewTypeCount(adapter.getViewTypeCount());
+            mRecycler.setViewTypeCount(getAdapterViewTypeCount());
             mHasStableIds = adapter.hasStableIds();
         } else {
             mHasStableIds = false;
