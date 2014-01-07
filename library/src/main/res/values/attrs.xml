@@ -4,5 +4,6 @@
         <attr name="itemMargin" format="dimension" />
         <attr name="numPagesToPreload" format="integer" />
         <attr name="gridOrientation" format="string" />
+        <attr name="sectionsSticky" format="boolean" />
     </declare-styleable>
 </resources>
