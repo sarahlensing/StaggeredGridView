@@ -385,13 +385,34 @@ public class StaggeredGridView extends ViewGroup {
         return ret;
     }
 
+    private void updateLastDirTowardsBeginning(int delta) {
+        boolean towardsBeginning = delta > 0;
+        boolean dirChanged = false;
+        if (delta != 0 && towardsBeginning != mLastDirTowardsBeginning) {
+            dirChanged = true;
+        }
+        mLastDirTowardsBeginning = towardsBeginning;
+        if (dirChanged) {
+            if (mCurrStickySection != null) {
+                updateCurrStickySection(mCurrStickySection);
+            }
+        }
+    }
+
     private void doScroll(int delta) {
         final boolean contentFits = contentFits();
         if (contentFits) {
             return;
         }
+        updateLastDirTowardsBeginning(delta);
+        mLastDirTowardsBeginning = delta > 0;
+
         updateCurrOffsetAndScrollChildren(delta);
         measureObtainAndLayoutGridItems();
+
+        if (needToUpdateCurrStickySection()) {
+            updateCurrStickySection(mNextStickySection);
+        }
         recycleOffscreenItems();
     }
 
@@ -1331,101 +1352,100 @@ public class StaggeredGridView extends ViewGroup {
         return rect;
     }
 
-    private boolean needToUpdateCurrStickySection(View child) {
+    private boolean needToUpdateCurrStickySection() {
+        if (mNextStickySection == null || mNextStickySection.view == null) {
+            return false;
+        }
         if (mLastDirTowardsBeginning) {
-            return (mNextStickySection != null && child.getLeft() >= getBeginningLeft() + mNextStickySection.rect.width());
+            return mNextStickySection.view.getLeft() >= getBeginningLeft() + mNextStickySection.rect.width();
         }
         else {
-            return child.getRight() <= getBeginningLeft();
+            return mNextStickySection.view.getLeft() <= getBeginningLeft();
         }
     }
 
-    private void layoutChildForStickySectionItem(View child, GridItem item, int offset, boolean useOffset) {
-        boolean towardsBeginning = offset > 0;
-        if (offset != 0 && towardsBeginning != mLastDirTowardsBeginning && mCurrStickySection != null) {
-            mLastDirTowardsBeginning = towardsBeginning;
-            updateCurrStickySection(mCurrStickySection);
-            Log.d(TAG, "Updated scrolling dir");
-        }
-
-        if (vertical()) {
-            //TODO!!!
-        }
-        else {
-            //initialize mCurrStickySection
-            if (mCurrStickySection == null && item.position == 0) {
-                updateCurrStickySection(item);
-            }
-
-            if (item.equals(mCurrStickySection)) {
-                Rect currStickyRect = getCurrStickyRect(item);
-                Rect nextStickyRect = getNextStickyRect();
-
-                if (nextStickyRect != null) {
-                    if (!Rect.intersects(currStickyRect, nextStickyRect)) {
-                        child.layout(getBeginningLeft(), item.rect.top, item.rect.width()+getBeginningLeft(), item.rect.bottom);
-                    }
-                    else {
-//                        if (useOffset) {
-//                            int nextLeft = child.getLeft() + offset;
-//                            int nextRight = child.getRight() + offset;
-//                            child.layout(nextLeft, child.getTop(), nextRight, child.getBottom());
-//                        }
-//                        else {
-//                            child.layout(nextStickyRect.left + nextStickyRect.width(), item.rect.top, nextStickyRect.left, item.rect.bottom);
-//                        }
-                        offsetStickyChildForItemInNormalWay(child, item, offset, useOffset);
-                    }
-                }
-                else {
-                    if ((mCurrStickySection.section == 0) || (mCurrStickySection.section == mGridSectionItems.size()-1)) {
-                        child.layout(getBeginningLeft(), item.rect.top, item.rect.width()+getBeginningLeft(), item.rect.bottom);
-                    }
-                    else {
-                        Log.d(TAG, "NO MANS LAND");
-                        offsetStickyChildForItemInNormalWay(child, item, offset, useOffset);
-                    }
-                }
-
-                //check to see if we need to update currStickySection
-                if (needToUpdateCurrStickySection(child)) {
-                    Log.d(TAG,"UPDATING NEXT STICKY");
-                    updateCurrStickySection(mNextStickySection);
-//                    child.layout(item.rect.left-mCurrentOffset, item.rect.top, item.rect.right-mCurrentOffset, item.rect.bottom);
-                }
-            }
-//            else if (lastDirTowardsBeginning && item.section == mCurrStickySection.section-1) {
-//                //put the section view at the end of its section
-//                layoutChildForStickySectionItemAtEndOfSection(item, child);
+//    private void layoutChildForStickySectionItem(View child, GridItem item, int offset, boolean useOffset) {
+//        boolean towardsBeginning = offset > 0;
+//        if (offset != 0 && towardsBeginning != mLastDirTowardsBeginning && mCurrStickySection != null) {
+//            mLastDirTowardsBeginning = towardsBeginning;
+//            updateCurrStickySection(mCurrStickySection);
+//            Log.d(TAG, "Updated scrolling dir");
+//        }
+//
+//        if (vertical()) {
+//            //TODO!!!
+//        }
+//        else {
+//            //initialize mCurrStickySection
+//            if (mCurrStickySection == null && item.position == 0) {
+//                updateCurrStickySection(item);
 //            }
-            else {
-                if (mLastDirTowardsBeginning && item.equals(mNextStickySection)) { //item.section == mCurrStickySection.section-1
-                    //put the section view at the end of its section
-                    layoutChildForStickySectionItemAtEndOfSection(item, child);
-                }
-                else {
-                    offsetStickyChildForItemInNormalWay(child, item, offset, useOffset);
-                }
-            }
-
-        }
-    }
-
-    private void offsetStickyChildForItemInNormalWay(View child, GridItem item, int offset, boolean useOffset) {
-        if (useOffset) {
-            int nextLeft = child.getLeft() + offset;
-            int nextRight = child.getRight() + offset;
-            child.layout(nextLeft, child.getTop(), nextRight, child.getBottom());
-        }
-        else {
-            //todo use diff method signature
-//            layoutChildForItem(child, item);
-        }
-    }
-
-    private void layoutChildForStickySectionItem(View child, GridItem item) {
-        layoutChildForStickySectionItem(child, item, 0, false);
-    }
+//
+//            if (item.equals(mCurrStickySection)) {
+//                Rect currStickyRect = getCurrStickyRect(item);
+//                Rect nextStickyRect = getNextStickyRect();
+//
+//                if (nextStickyRect != null) {
+//                    if (!Rect.intersects(currStickyRect, nextStickyRect)) {
+//                        child.layout(getBeginningLeft(), item.rect.top, item.rect.width()+getBeginningLeft(), item.rect.bottom);
+//                    }
+//                    else {
+////                        if (useOffset) {
+////                            int nextLeft = child.getLeft() + offset;
+////                            int nextRight = child.getRight() + offset;
+////                            child.layout(nextLeft, child.getTop(), nextRight, child.getBottom());
+////                        }
+////                        else {
+////                            child.layout(nextStickyRect.left + nextStickyRect.width(), item.rect.top, nextStickyRect.left, item.rect.bottom);
+////                        }
+//                        offsetStickyChildForItemInNormalWay(child, item, offset, useOffset);
+//                    }
+//                }
+//                else {
+//                    if ((mCurrStickySection.section == 0) || (mCurrStickySection.section == mGridSectionItems.size()-1)) {
+//                        child.layout(getBeginningLeft(), item.rect.top, item.rect.width()+getBeginningLeft(), item.rect.bottom);
+//                    }
+//                    else {
+//                        Log.d(TAG, "NO MANS LAND");
+//                        offsetStickyChildForItemInNormalWay(child, item, offset, useOffset);
+//                    }
+//                }
+//
+//                //check to see if we need to update currStickySection
+//                if (needToUpdateCurrStickySection(child)) {
+//                    Log.d(TAG,"UPDATING NEXT STICKY");
+//                    updateCurrStickySection(mNextStickySection);
+////                    child.layout(item.rect.left-mCurrentOffset, item.rect.top, item.rect.right-mCurrentOffset, item.rect.bottom);
+//                }
+//            }
+////            else if (lastDirTowardsBeginning && item.section == mCurrStickySection.section-1) {
+////                //put the section view at the end of its section
+////                layoutChildForStickySectionItemAtEndOfSection(item, child);
+////            }
+//            else {
+//                if (mLastDirTowardsBeginning && item.equals(mNextStickySection)) { //item.section == mCurrStickySection.section-1
+//                    //put the section view at the end of its section
+//                    layoutChildForStickySectionItemAtEndOfSection(item, child);
+//                }
+//                else {
+//                    offsetStickyChildForItemInNormalWay(child, item, offset, useOffset);
+//                }
+//            }
+//
+//        }
+//    }
+//
+//    private void offsetStickyChildForItemInNormalWay(View child, GridItem item, int offset, boolean useOffset) {
+//        if (useOffset) {
+//            int nextLeft = child.getLeft() + offset;
+//            int nextRight = child.getRight() + offset;
+//            child.layout(nextLeft, child.getTop(), nextRight, child.getBottom());
+//        }
+//        else {
+//            //todo use diff method signature
+////            layoutChildForItem(child, item);
+//        }
+//    }
 
     private void layoutChildForItem(GridItem item) {
         View child = item.view;
@@ -1438,12 +1458,132 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     private void layoutChildForSectionItem(GridItem item) {
+        layoutChildForSectionItemOffsetByNextSticky(item, mXSectionOverlap, mYSectionOverlap);
+//        View child = item.view;
+//        if (vertical()) {
+//            child.layout(item.rect.left, getBeginningTop(), item.rect.right, getBeginningTop() + item.rect.height());
+//        }
+//        else {
+//            child.layout(getBeginningLeft(), item.rect.top, getBeginningLeft() + item.rect.width(), item.rect.bottom);
+//        }
+    }
+
+    private int getBeginningSectionLeft() {
+        return getBeginningLeft();
+//        return getPaddingLeft();
+    }
+
+    private int getBeginningSectionTop() {
+        return getBeginningTop();
+//        return getPaddingTop();
+    }
+
+    private int getMaxAllowedLeftForSectionItem(GridItem item) {
+        int maxAllowedLeft = getBeginningSectionLeft();
+        return maxAllowedLeft;
+    }
+
+    private int getMinAllowedLeftForSectionItem(GridItem item) {
+        int minAllowedLeft = getBeginningSectionLeft()-item.rect.width();
+        if (item.section == 0 && mNextStickySection == null) {
+            minAllowedLeft = getBeginningSectionLeft();
+        }
+        return minAllowedLeft;
+    }
+
+    private void layoutChildForSectionItemOffsetByNextSticky(GridItem item, int xOverlap, int yOverlap) {
+        View child = item.view;
+        if (vertical()) {
+            if (mLastDirTowardsBeginning) {
+                child.layout(item.rect.left, getBeginningSectionTop()+yOverlap, item.rect.right, getBeginningSectionTop()+item.rect.height()+yOverlap);
+            }
+            else {
+                child.layout(item.rect.left, getBeginningSectionTop()-yOverlap, item.rect.right, getBeginningSectionTop()+item.rect.height()-yOverlap);
+            }
+
+        }
+        else {
+            int nextLeft;
+            if (mLastDirTowardsBeginning) {
+                int maxAllowedLeft = getMaxAllowedLeftForSectionItem(item);
+//                nextLeft = Math.max(child.getLeft() + xOverlap, maxAllowedLeft);
+                nextLeft = child.getLeft() + xOverlap;
+//                Log.d(TAG, "Item section:"+item.section+ " nextLeft:"+nextLeft+ " "+" minLeft:"+maxAllowedLeft);
+//                child.layout(child.getLeft()+xOverlap, item.rect.top, child.getLeft()+item.rect.width()+xOverlap, item.rect.bottom);
+            }
+            else {
+                int minAllowedLeft = getMinAllowedLeftForSectionItem(item);
+//                nextLeft = Math.max(child.getLeft() - xOverlap, minAllowedLeft);
+                nextLeft = child.getLeft() - xOverlap;
+//                Log.d(TAG, "Item section:"+item.section+ " nextLeft:"+nextLeft+ " "+" maxLeft:"+minAllowedLeft);
+//                child.layout(child.getLeft()-xOverlap, item.rect.top, child.getLeft()+item.rect.width()-xOverlap, item.rect.bottom);
+            }
+            child.layout(nextLeft, item.rect.top, nextLeft + item.rect.width(), item.rect.bottom);
+        }
+    }
+
+    private Rect calculateCurrStickyRect() {
+        return calculateRectForItem(mCurrStickySection);
+    }
+
+    private Rect calculateNextStickyRect() {
+        return calculateRectForItem(mNextStickySection);
+    }
+
+    private Rect calculateRectForItem(GridItem item) {
+        Rect rect = null;
+        View child = item.view;
+        if (vertical()) {
+            rect = new Rect(child.getLeft(), child.getTop()-mCurrentOffset, child.getRight(), child.getBottom()-mCurrentOffset);
+        }
+        else {
+            rect = new Rect(child.getLeft()-mCurrentOffset, child.getTop(), child.getRight()-mCurrentOffset, child.getBottom());
+        }
+        return rect;
+    }
+
+    int mXSectionOverlap = 0;
+    int mYSectionOverlap = 0;
+
+    private void layoutChildForCurrSectionItem(GridItem item) {
+        if (mNextStickySection == null || mNextStickySection.view == null) {
+            layoutChildForSectionItem(item);
+        }
+        else {
+            Rect currStickyRect = calculateCurrStickyRect();
+            Rect nextStickyRect = calculateNextStickyRect();
+            if (Rect.intersects(currStickyRect, nextStickyRect)) {
+                mXSectionOverlap = Math.max(0, Math.min(currStickyRect.left+currStickyRect.width(),nextStickyRect.left+nextStickyRect.width()) - Math.max(currStickyRect.left,nextStickyRect.left));
+                mYSectionOverlap = Math.max(0, Math.min(currStickyRect.top+currStickyRect.height(),nextStickyRect.top+nextStickyRect.height()) - Math.max(currStickyRect.top,nextStickyRect.top));
+                layoutChildForSectionItemOffsetByNextSticky(item, mXSectionOverlap, mYSectionOverlap);
+            }
+            else {
+                mXSectionOverlap = 0;
+                mYSectionOverlap = 0;
+                layoutChildForSectionItem(item);
+            }
+        }
+    }
+
+    private void layoutChildForNextSectionItem(GridItem item) {
         View child = item.view;
         if (vertical()) {
             child.layout(item.rect.left, item.rect.top-mCurrentOffset, item.rect.right, item.rect.bottom-mCurrentOffset);
         }
         else {
-            child.layout(item.rect.left-mCurrentOffset, item.rect.top, item.rect.right-mCurrentOffset, item.rect.bottom);
+            int nextLeft = item.rect.left-mCurrentOffset;
+            if (mLastDirTowardsBeginning) {
+                if (nextLeft >= getBeginningLeft()) {
+                    nextLeft = getBeginningLeft();
+                }
+            }
+            else {
+                if (nextLeft <= getBeginningLeft()) {
+                    nextLeft = getBeginningLeft();
+                }
+            }
+            Log.d(TAG, "Item section:"+item.section+ " nextLeft:"+nextLeft + "roomLeft:"+nextLeft);
+            child.layout(nextLeft, item.rect.top, item.rect.right-mCurrentOffset, item.rect.bottom);
         }
     }
 
@@ -1509,17 +1649,6 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
-    private void updateCurrentOffset(int delta) {
-        int nextPredictedOffset = mCurrentOffset - delta;
-        if (nextPredictedOffset < getMinAllowedOffset()) {
-            delta = mCurrentOffset;
-        }
-        else if (nextPredictedOffset > getMaxAllowedOffset()) {
-            delta = mCurrentOffset - getMaxAllowedOffset();
-        }
-        mCurrentOffset-=delta;
-    }
-
     final void updateCurrOffsetAndScrollChildren(int offset) {
 //        Log.d("CURR OFFSET", String.valueOf(mCurrentOffset));
 
@@ -1542,34 +1671,60 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
+    private void calculateNextStickySection() {
+        int nextIndex;
+        if (mLastDirTowardsBeginning) {
+            nextIndex = Math.max(mCurrStickySection.section - 1, 0);
+        }
+        else {
+            nextIndex = Math.min(mCurrStickySection.section + 1, mGridSectionItems.size()-1);
+        }
+        GridItem nextSticky = mGridSectionItems.get(nextIndex);
+        mNextStickySection = nextSticky;
+    }
+
+    private void resetViewRectForStickySection() {
+        GridItem item = mCurrStickySection;
+        View child = item.view;
+        if (vertical()) {
+            child.layout(item.rect.left, getBeginningSectionTop(), item.rect.right, getBeginningSectionTop() + item.rect.height());
+        }
+        else {
+            child.layout(getBeginningSectionLeft(), item.rect.top, getBeginningSectionLeft() + item.rect.width(), item.rect.bottom);
+        }
+    }
+
+    private void setCurrStickySection(GridItem item) {
+        mCurrStickySection = item;
+//        resetViewRectForStickySection();
+        calculateNextStickySection();
+    }
+
+    private boolean shouldLayoutAsCurrStickySection(GridItem item) {
+        if (mSectionsSticky && item.isSection) {
+            if (mCurrStickySection == null) {
+                setCurrStickySection(item);
+            }
+            return item.equals(mCurrStickySection);
+        }
+        return false;
+    }
+
+    private boolean shouldLayoutAsNextStickySection(GridItem item) {
+        return (mSectionsSticky && item.isSection && item.equals(mNextStickySection));
+    }
+
     private void layoutGridItem(GridItem item) {
-        if (item.isSection && mSectionsSticky) {
-            layoutChildForSectionItem(item);
+        if (shouldLayoutAsCurrStickySection(item)) {
+            layoutChildForCurrSectionItem(item);
+        }
+        else if (shouldLayoutAsNextStickySection(item)) {
+            layoutChildForNextSectionItem(item);
         }
         else {
             layoutChildForItem(item);
         }
     }
-
-//    final void offsetChild(View child, int offset) {
-//        if (vertical()) {
-//            int nextTop = child.getTop() + offset;
-//            int nextBottom = child.getBottom() + offset;
-//            child.layout(child.getLeft(), nextTop, child.getRight(), nextBottom);
-//        }
-//        else {
-//            GridItem item = (GridItem) child.getTag(R.string.GRID_ITEM_TAG);
-//            if (item.isSection && mSectionsSticky) {
-//                layoutChildForItem(item);
-//            }
-//            else {
-//                int nextLeft = child.getLeft() + offset;
-//                int nextRight = child.getRight() + offset;
-//                child.layout(nextLeft, child.getTop(), nextRight, child.getBottom());
-//            }
-//        }
-//    }
-
 
     final View obtainSectionView(int position, View optScrap, int rawPosition) {
         View view = mRecycler.getTransientStateView(position);
