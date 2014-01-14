@@ -803,7 +803,7 @@ public class StaggeredGridView extends ViewGroup {
                 if (rectTop >= nextTop) {
                     int rectRight = rect.right;
                     if (rectRight < nextLeft) {
-                        int rectHeight = rect.bottom - rectTop;
+                        int rectHeight = rect.height();
                         int rectTotalHeight = rectHeight + mItemMargin;
                         clearedSpace+= rectTotalHeight;
                         hadClearedSpaceBefore = true;
@@ -1069,6 +1069,29 @@ public class StaggeredGridView extends ViewGroup {
         }
     }
 
+    private Rect posRectFor(int itemLeft, int itemTop, int itemRight, int itemBottom, boolean isSection) {
+        if (isSection) {
+            if (vertical()) {
+                return new Rect(getBeginningLeft(), itemTop, getWidth()-getBeginningLeft(), itemBottom);
+            }
+            else {
+                return new Rect(itemLeft, getBeginningTop(), itemRight, getHeight()-getBeginningTop());
+            }
+        }
+        else {
+            return new Rect(itemLeft, itemTop, itemRight, itemBottom);
+        }
+    }
+
+    private Rect viewRectFor(int itemLeft, int itemTop, int itemRight, int itemBottom, boolean isSection, Rect posRect) {
+        if (isSection) {
+            return new Rect(itemLeft, itemTop, itemRight, itemBottom);
+        }
+        else {
+            return posRect;
+        }
+    }
+
     private Rect calculateNextItemRect(ItemSize size, boolean isSection) {
         int itemWidth = size.width;
         int itemHeight = size.height;
@@ -1082,10 +1105,12 @@ public class StaggeredGridView extends ViewGroup {
         final int itemTop = nextTop;
         final int itemBottom = itemTop + itemHeight;
 
-        Rect ret = new Rect(itemLeft, itemTop, itemRight, itemBottom);
-        updatePosRects(ret);
-        updateContentSize(ret);
-        return ret;
+        Rect posRect = posRectFor(itemLeft, itemTop, itemRight, itemBottom, isSection);
+        updatePosRects(posRect);
+        updateContentSize(posRect);
+
+        Rect viewRect = viewRectFor(itemLeft, itemTop, itemRight, itemBottom, isSection, posRect);
+        return viewRect;
     }
 
     private StaggeredGridSectionAdapter getSectionAdapter() {
