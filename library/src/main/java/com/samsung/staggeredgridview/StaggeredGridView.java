@@ -771,6 +771,7 @@ public class StaggeredGridView extends ViewGroup {
         updateEdgeSizes(l, t, r, b);
     }
 
+    //is actually nextBottom if isVertical() so consider better variable naming
     private boolean ensureAvailableSpace(int nextLeft, int nextTop, int itemSpace) {
         boolean ret = true;
 
@@ -858,6 +859,14 @@ public class StaggeredGridView extends ViewGroup {
                     for (Rect rect : sortedRects()) {
                         if (ensureAvailableSpace(rect.left, rect.bottom + mItemMargin, itemSpace)) {
                             return new Point(rect.left, rect.bottom + mItemMargin);
+                        }
+                    }
+                    //ensures that scenario |-___| where rect width is -- places the rect at beginning left
+                    for (Rect anchorRect: sortedRects()) {
+                        for (Rect rect : sortedRects()) {
+                            if (ensureAvailableSpace(rect.left, anchorRect.bottom + mItemMargin, itemSpace)) {
+                                return new Point(rect.left, rect.bottom + mItemMargin);
+                            }
                         }
                     }
                     Rect lastRect = sorted.get(sorted.size()-1);
@@ -1096,7 +1105,7 @@ public class StaggeredGridView extends ViewGroup {
         int itemWidth = size.width;
         int itemHeight = size.height;
 
-        Point point = getNextPoint(itemHeight, isSection);
+        Point point = getNextPoint(vertical()?itemWidth:itemHeight, isSection);
         int nextLeft = point.x;
         int nextTop = point.y;
 
@@ -1196,7 +1205,12 @@ public class StaggeredGridView extends ViewGroup {
             child = obtainSectionView(position, null, item.rawPosition);
         }
         else {
-            child = obtainView(position, null, item.rawPosition);
+            if (hasSectionAdapter()) {
+                child = obtainView(position, null, item.rawPosition, item.section);
+            }
+            else {
+                child = obtainView(position, null, item.rawPosition);
+            }
         }
 
         if(child == null) {
@@ -1370,7 +1384,8 @@ public class StaggeredGridView extends ViewGroup {
      * @param optScrap Optional scrap view; will be reused if possible
      * @return A new view, a recycled view from mRecycler, or optScrap
      */
-    final View obtainView(int position, View optScrap, int rawPosition) {
+
+    final View obtainView(int position, View optScrap, int rawPosition, int section) {
         View view = mRecycler.getTransientStateView(position);
         if (view != null) {
             return view;
@@ -1386,7 +1401,12 @@ public class StaggeredGridView extends ViewGroup {
         final int positionViewType = mAdapter.getItemViewType(position);
         final View scrap = optType == positionViewType ? optScrap : mRecycler.getScrapView(positionViewType);
 
-        view = mAdapter.getView(position, scrap, this);
+        if (hasSectionAdapter()) {
+            view = getSectionAdapter().getView(section, position, scrap, this);
+        }
+        else {
+            view = mAdapter.getView(position, scrap, this);
+        }
 
         if (view != scrap && scrap != null) {
             // The adapter didn't use it; put it back.
@@ -1408,6 +1428,10 @@ public class StaggeredGridView extends ViewGroup {
         sglp.viewType = positionViewType;
 
         return view;
+    }
+
+    final View obtainView(int position, View optScrap, int rawPosition) {
+        return obtainView(position, optScrap, rawPosition, -1);
     }
 
     public ListAdapter getAdapter() {
