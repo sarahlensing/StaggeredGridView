@@ -47,6 +47,8 @@ import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ListAdapter;
 
+import com.sarahlensing.StaggeredGridView.R;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;

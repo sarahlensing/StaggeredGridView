@@ -6,11 +6,12 @@ buildscript {
         classpath 'com.android.tools.build:gradle:0.7.+'
     }
 }
+
 apply plugin: 'android-library'
 
-repositories {
-    mavenCentral()
-}
+//repositories {
+//    mavenCentral()
+//}
 
 android {
     compileSdkVersion 19
@@ -25,3 +26,5 @@ android {
 dependencies {
 	compile 'com.android.support:appcompat-v7:+'
 }
+
+apply from: 'https://raw.github.com/chrisbanes/gradle-mvn-push/master/gradle-mvn-push.gradle'
