@@ -1,4 +1,4 @@
-package com.samsung.staggeredgridview;
+package com.sarahlensing.staggeredgridview;
 
 /*
  * Copyright (C) 2012 The Android Open Source Project
@@ -33,6 +33,7 @@ import android.support.v4.view.MotionEventCompat;
 import android.support.v4.view.VelocityTrackerCompat;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.widget.EdgeEffectCompat;
+import android.support.v4.widget.ScrollerCompat;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.util.SparseArray;
@@ -47,8 +48,6 @@ import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ListAdapter;
 
-import com.sarahlensing.StaggeredGridView.R;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -57,7 +56,7 @@ import java.util.Comparator;
  * ListView and GridView just not complex enough? Try StaggeredGridView!
  *
  * <p>StaggeredGridView presents a multi-column and multi-row grid. Each successive item from a
- * {@link com.samsung.staggeredgridview.StaggeredGridAdapter StaggeredGridAdapter} will be arranged from top to bottom
+ * {@link com.sarahlensing.staggeredgridview.StaggeredGridAdapter StaggeredGridAdapter} will be arranged from top to bottom
  * or left to right. The largest vertical or horizontal gap (depending on grid orientation) is always filled first .</p>
  *
  */
@@ -215,7 +214,7 @@ public class StaggeredGridView extends ViewGroup {
         mTouchSlop = vc.getScaledTouchSlop();
         mMaximumVelocity = vc.getScaledMaximumFlingVelocity();
         mFlingVelocity = vc.getScaledMinimumFlingVelocity();
-        mScroller = ScrollerCompat.from(context);
+        mScroller = ScrollerCompat.create(context);
 
         mBeginningEdge = new EdgeEffectCompat(context);
         mEndingEdge = new EdgeEffectCompat(context);

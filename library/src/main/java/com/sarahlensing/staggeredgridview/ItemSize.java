@@ -1,4 +1,4 @@
-package com.samsung.staggeredgridview;
+package com.sarahlensing.staggeredgridview;
 
 public class ItemSize {
 

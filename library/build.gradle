@@ -9,9 +9,9 @@ buildscript {
 
 apply plugin: 'android-library'
 
-//repositories {
-//    mavenCentral()
-//}
+repositories {
+    mavenCentral()
+}
 
 android {
     compileSdkVersion 19

@@ -1,7 +1,6 @@
-package com.samsung.staggeredgridview;
+package com.sarahlensing.staggeredgridview;
 
 import android.widget.BaseAdapter;
-import android.widget.ListAdapter;
 
 /**
  * Created by sarahlensing on 11/20/13.
