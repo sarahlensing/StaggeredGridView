@@ -13,5 +13,10 @@ public abstract class StaggeredGridSectionAdapter extends StaggeredGridAdapter {
     public abstract View getSectionView(int position, View convertView, ViewGroup parent);
     public abstract int getSectionCount();
     public abstract int getItemCountForSection(int section);
+    public abstract View getView(int section, int position, View convertView, ViewGroup parent);
 
+
+    public View getView(int position, View convertView, ViewGroup parent) {
+        return null;
+    }
 }

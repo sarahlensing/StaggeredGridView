@@ -10,7 +10,6 @@ import android.widget.BaseAdapter;
 public abstract class StaggeredGridAdapter extends BaseAdapter {
 
     public abstract ItemSize getItemSize(int position);
-
 }
 
 
