@@ -42,8 +42,8 @@ Attributes supported:
     android:layout_height="match_parent"
     android:id="@+id/mainLayout">
 
-    <com.samsung.staggeredgridview.StaggeredGridView
-        android:id="@+id/staggeredGridView1"
+    <com.sarahlensing.staggeredgridview.StaggeredGridView
+        android:id="@+id/staggeredGridView"
 		staggered:gridOrientation="horizontal"
 		staggered:itemMargin="20dp"
 		staggered:numPagesToPreload="2"
