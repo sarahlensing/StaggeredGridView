@@ -11,47 +11,18 @@ This version of StaggeredGridView is optimized for views where the size of each 
 
 ## Setup
 
-####1. Create a folder in the project's root directory to hold third party libraries:
-
-```
-mkdir lib
-```
-
-####2. Clone the repository into the library directory:
-
-```
-cd lib
-```
-
-```
-git clone git@github.com:sarahlensing/StaggeredGridView.git
-```
-
--or-
-
-Add the repository as a submodule:
-
-```
-git submodule add git@github.com:sarahlensing/StaggeredGridView.git lib/StaggeredGridView
-```
-
-####3. Add as a dependency to your project
-
 #####Via Gradle:
 
 ```
 dependencies {
-    compile 'com.android.support:appcompat-v7:+'
-    compile project(':submodules:StaggeredGridView:library')
+    compile 'com.sarahlensing.staggeredgridview:library:x.x.x'
 }
 ```
+Replace "x.x.x" with the current version. At the moment, that version is "0.0.3"
 
 -or-
 #####Library project:
 If you are not using Gradle, add the StaggeredGridView as a [library project dependency](http://stackoverflow.com/questions/16588064/how-do-i-add-a-library-project-to-the-android-studio)
-
-
-<em>Note: Gradle artifact will be published soon so that you will not have to worry about steps 1 and 2 if you are using Gradle or Maven.</em>
 
 ## Usage
 
