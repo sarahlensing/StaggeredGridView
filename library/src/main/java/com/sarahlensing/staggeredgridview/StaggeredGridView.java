@@ -96,6 +96,7 @@ public class StaggeredGridView extends ViewGroup {
     private int mCurrentOffset = 0;
 
     private ArrayList<Integer> mSectionIndexes;
+    private int mRawPosition;
 
     private int mTouchSlop;
     private int mMaximumVelocity;
@@ -762,6 +763,14 @@ public class StaggeredGridView extends ViewGroup {
         layoutGridItems();
     }
 
+    //use this method if certain previous items wont be removed
+    public void reloadGridAppendItems() {
+        int prevSize = mSectionIndexes.size();
+        mSectionIndexes = getSectionsFromAdapter();
+        int nextSize = mSectionIndexes.size();
+        buildGridItems(prevSize, nextSize);
+    }
+
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
         mInLayout = true;
@@ -1144,16 +1153,15 @@ public class StaggeredGridView extends ViewGroup {
     }
 
     private void buildGridItems() {
+        mRawPosition = 0;
+        mSectionIndexes = getSectionsFromAdapter();
+        buildGridItems(0, mSectionIndexes.size());
+    }
+
+    private void buildGridItems(int sectionStart, int sectionEnd) {
         if (mAdapter == null) {
             return;
         }
-
-        mSectionIndexes = getSectionsFromAdapter();
-
-        int sectionStart = 0;
-        int sectionEnd = mSectionIndexes.size();
-
-        int rawPosition = 0;
 
         for (int i = sectionStart; i < sectionEnd; i++) {
             if (hasSectionAdapter()) {
@@ -1162,7 +1170,7 @@ public class StaggeredGridView extends ViewGroup {
                 sectionItem.position = i;
                 sectionItem.section = i;
                 sectionItem.isSection = true;
-                sectionItem.rawPosition = rawPosition;
+                sectionItem.rawPosition = mRawPosition;
                 ItemSize sectionSize = getSectionAdapter().getSectionSize(i);
                 sectionItem.rect = calculateNextItemRect(sectionSize, sectionItem.isSection);
                 mGridItems.add(i,sectionItem);
@@ -1170,19 +1178,19 @@ public class StaggeredGridView extends ViewGroup {
 
             int numItemsInSection = mSectionIndexes.get(i);
             for (int j = 0; j < numItemsInSection; j++) {
-                rawPosition++;
+                mRawPosition++;
 
                 GridItem item = new GridItem();
                 item.id = mAdapter.getItemId(j);
                 item.position = j;
                 item.section = i;
                 item.isSection = false;
-                item.rawPosition = rawPosition;
+                item.rawPosition = mRawPosition;
                 ItemSize size = mAdapter.getItemSize(j);
                 item.rect = calculateNextItemRect(size, item.isSection);
                 mGridItems.add(j,item);
             }
-            rawPosition++;
+            mRawPosition++;
         }
     }
 
