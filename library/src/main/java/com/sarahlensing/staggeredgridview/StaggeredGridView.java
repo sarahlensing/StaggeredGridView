@@ -182,6 +182,13 @@ public class StaggeredGridView extends ViewGroup {
                     (this.rawPosition == other.rawPosition));
         }
 
+        public boolean similar(Object o) {
+            GridItem other = (GridItem)o;
+            return ((this.id == other.id) && (this.position == other.position) &&
+                    this.rect.width() == other.rect.width() && this.rect.height() == other.rect.height() &&
+                    (this.isSection == other.isSection) && (this.section == other.section)
+                    );
+        }
     }
 
     public StaggeredGridView(Context context) {
@@ -745,7 +752,7 @@ public class StaggeredGridView extends ViewGroup {
         mPosRects.clear();
         mGridItems.clear();
         mVisibleItems.clear();
-        mContentSize = new ItemSize(0,0);
+        mContentSize = null;
         mCurrentOffset = 0;
         recycleAllViews();
     }
@@ -757,9 +764,61 @@ public class StaggeredGridView extends ViewGroup {
         return getWidth() * mNumberPagesToPreload;
     }
 
-    private void reloadGrid() {
+    private Rect getVisibleViewportRect() {
+        if (vertical()) {
+            return new Rect(0, Math.max(0, mCurrentOffset), getWidth(), Math.min(mContentSize.height, mCurrentOffset));
+        }
+        else {
+            return new Rect(Math.max(mCurrentOffset, 0), 0, Math.min(mContentSize.width, mCurrentOffset), getHeight());
+        }
+    }
+    public void reloadGrid() {
+        //prepare measure of prevOffset
+        int prevOffset = mCurrentOffset;
+        int adjustOffset = 0;
+        GridItem intersecting = null;
+        Rect viewport = null;
+
+        if (mContentSize != null) {
+            viewport = getVisibleViewportRect();
+        }
+        if (mVisibleItems != null) {
+            for (GridItem item : mVisibleItems) {
+                if (Rect.intersects(viewport, item.rect)) {
+                    intersecting = item;
+                    break;
+                }
+            }
+        }
+        if (intersecting != null) {
+            adjustOffset = viewport.left - intersecting.rect.left;
+        }
+
+        //reset previous build values and build grid items
         prepareToBuildItems();
-        buildGridItems();
+        mGridItems = buildGridItems();
+
+        //reset to the best offset so no shifting in grid
+        if (intersecting != null) {
+            GridItem similar = null;
+            for (GridItem item : mGridItems) {
+                if (item.similar(intersecting)) {
+                    similar = item;
+                    break;
+                }
+            }
+            if (similar != null) {
+                mCurrentOffset = similar.rect.left + adjustOffset;
+            }
+            else {
+                mCurrentOffset = prevOffset;
+            }
+        }
+        else {
+            mCurrentOffset = prevOffset;
+        }
+
+        //layout the items (which may be new/different) for the current offset
         layoutGridItems();
     }
 
@@ -768,7 +827,7 @@ public class StaggeredGridView extends ViewGroup {
         int prevSize = mSectionIndexes.size();
         mSectionIndexes = getSectionsFromAdapter();
         int nextSize = mSectionIndexes.size();
-        buildGridItems(prevSize, nextSize);
+        mGridItems.addAll(buildGridItems(prevSize, nextSize));
     }
 
     @Override
@@ -1152,16 +1211,18 @@ public class StaggeredGridView extends ViewGroup {
         return ret;
     }
 
-    private void buildGridItems() {
+    private ArrayList<GridItem> buildGridItems() {
         mRawPosition = 0;
         mSectionIndexes = getSectionsFromAdapter();
-        buildGridItems(0, mSectionIndexes.size());
+        return buildGridItems(0, mSectionIndexes.size());
     }
 
-    private void buildGridItems(int sectionStart, int sectionEnd) {
+    private ArrayList<GridItem> buildGridItems(int sectionStart, int sectionEnd) {
         if (mAdapter == null) {
-            return;
+            return null;
         }
+
+        ArrayList<GridItem> items = new ArrayList<GridItem>();
 
         for (int i = sectionStart; i < sectionEnd; i++) {
             if (hasSectionAdapter()) {
@@ -1173,7 +1234,7 @@ public class StaggeredGridView extends ViewGroup {
                 sectionItem.rawPosition = mRawPosition;
                 ItemSize sectionSize = getSectionAdapter().getSectionSize(i);
                 sectionItem.rect = calculateNextItemRect(sectionSize, sectionItem.isSection);
-                mGridItems.add(i,sectionItem);
+                items.add(i,sectionItem);
             }
 
             int numItemsInSection = mSectionIndexes.get(i);
@@ -1188,10 +1249,11 @@ public class StaggeredGridView extends ViewGroup {
                 item.rawPosition = mRawPosition;
                 ItemSize size = mAdapter.getItemSize(j);
                 item.rect = calculateNextItemRect(size, item.isSection);
-                mGridItems.add(j,item);
+                items.add(j,item);
             }
             mRawPosition++;
         }
+        return items;
     }
 
     private boolean shouldLayout(Rect itemRect, Rect layoutRect) {
